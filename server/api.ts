@@ -219,6 +219,15 @@ export function createApi(db: Db, host: Host) {
     }
   });
 
+  app.post('/order', async c => {
+    const { ids } = await c.req.json<{ ids: string[] }>();
+    if (!Array.isArray(ids) || ids.some(id => typeof id !== 'string')) throw new HttpError(400, 'Send the sprouts in their new order.');
+    const known = new Set(q.sprouts(db).map(s => s.id));
+    q.reorder(db, ids.filter(id => known.has(id)));
+    bus.send({ type: 'sprout', sproutId: ids[0] ?? '' });
+    return c.json({ ok: true });
+  });
+
   app.post('/import', async c => {
     const bytes = Buffer.from(await c.req.arrayBuffer());
     if (!bytes.length) throw new HttpError(400, 'Choose a .sprout file to import.');

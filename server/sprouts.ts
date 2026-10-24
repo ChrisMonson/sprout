@@ -17,7 +17,7 @@ export function newSproutId(): string {
 
 export function createSproutRow(db: Db, seed: string): string {
   const id = newSproutId();
-  db.prepare('INSERT INTO sprouts (id, seed, status, created_at) VALUES (?, ?, ?, ?)').run(id, seed, 'seeding', Date.now());
+  db.prepare('INSERT INTO sprouts (id, seed, status, created_at, position) VALUES (?, ?, ?, ?, ?)').run(id, seed, 'seeding', Date.now(), q.frontPosition(db));
   return id;
 }
 

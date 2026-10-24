@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type DragEvent } from 'react';
 import { flushSync } from 'react-dom';
 import { api, useStream, type AppState } from './api.ts';
 import { Leaf, Seed, Seedling } from './icons.tsx';
@@ -100,6 +100,7 @@ function emptyCells(count: number) {
 
 function Home({ state, onRefresh }: { state: AppState; onRefresh: () => void }) {
   const [importError, setImportError] = useState('');
+  const { sprouts, tray, drag, moveBy } = useTrayOrder(state.sprouts, onRefresh);
   const statusText = (s: AppState['sprouts'][number]) =>
     s.status === 'planting' ? 'Planting…' : s.status === 'failed' ? "Didn't take root" : s.busy ? 'Growing…' : s.growing ? 'Growing' : 'Resting';
   return (
@@ -120,16 +121,19 @@ function Home({ state, onRefresh }: { state: AppState; onRefresh: () => void }) 
         <h1 className="title-l">Your sprouts</h1>
         {/* A nod to a seed-starting tray: each sprout sits in a cell, and the
             row is filled out with empty cells, the first of which plants a new one. */}
-        <div className="sprout-list tray">
-          {state.sprouts.map(s => (
-            <a key={s.id} className="sprout-card" href={`#/s/${s.id}`}
+        <div className="sprout-list tray" ref={tray} onDragOver={drag.over} onDrop={drag.drop}>
+          {sprouts.map(s => (
+            <a key={s.id} className={`sprout-card${drag.id === s.id ? ' dragging' : ''}`} href={`#/s/${s.id}`} data-id={s.id}
+              draggable onDragStart={e => drag.start(e, s.id)} onDragEnd={drag.end}
+              onKeyDown={e => { if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { e.preventDefault(); moveBy(s.id, e.key === 'ArrowLeft' ? -1 : 1); } }}
+              title="Drag to reorder (or Option-← / →)" aria-keyshortcuts="Alt+ArrowLeft Alt+ArrowRight"
               style={s.id === transitionSprout ? { viewTransitionName: `sprout-${s.id}` } : undefined}>
               <span className="n" style={s.id === transitionSprout ? { viewTransitionName: `sprout-name-${s.id}` } : undefined}>{s.name || 'Unnamed sprout'}</span>
               <span className="s">{s.seed}</span>
               <span className={`status ${statusGlyph(s).tone}`}>{statusGlyph(s).icon}{statusText(s)}</span>
             </a>
           ))}
-          {Array.from({ length: emptyCells(state.sprouts.length) }, (_, i) => i === 0
+          {Array.from({ length: emptyCells(sprouts.length) }, (_, i) => i === 0
             ? <a key="plant" className="cell-empty plant" href="#/new"><span aria-hidden="true">+</span>Grow something new</a>
             : <span key={i} className="cell-empty extra" aria-hidden="true" />)}
         </div>
@@ -226,4 +230,150 @@ function ImportSprout({ onError }: { onError: (message: string) => void }) {
       <button className="btn quiet" onClick={() => input.current?.click()} disabled={busy}>{busy ? 'Importing…' : 'Import…'}</button>
     </>
   );
+}
+
+type Summary = AppState['sprouts'][number];
+
+/**
+ * Drag-to-reorder for the tray. While dragging, the order updates live so the
+ * other cells slide aside (animated FLIP-style); dropping saves it. Dropping on
+ * an empty cell moves the sprout to the end. Option-arrows move a focused cell.
+ */
+function useTrayOrder(source: Summary[], onSaved: () => void) {
+  const [order, setOrder] = useState<string[] | null>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const tray = useRef<HTMLDivElement>(null);
+  const rects = useRef(new Map<string, DOMRect>());
+  // dragend follows drop; it must not undo an order that was just dropped.
+  const dropped = useRef(false);
+  // The drag in progress, readable by handlers from an older render.
+  const dragging = useRef<string | null>(null);
+
+  const byId = new Map(source.map(s => [s.id, s]));
+  const ids = order ? [...order.filter(id => byId.has(id)), ...source.filter(s => !order.includes(s.id)).map(s => s.id)] : source.map(s => s.id);
+  const sprouts = ids.map(id => byId.get(id)!);
+
+  // Remember where every cell was before a change, then slide each from there to its new place.
+  const measure = () => {
+    rects.current.clear();
+    tray.current?.querySelectorAll<HTMLElement>('[data-id]').forEach(el => rects.current.set(el.dataset.id!, el.getBoundingClientRect()));
+  };
+  useLayoutEffect(() => {
+    if (!rects.current.size || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    tray.current?.querySelectorAll<HTMLElement>('[data-id]').forEach(el => {
+      const before = rects.current.get(el.dataset.id!);
+      if (!before) return;
+      const after = el.getBoundingClientRect();
+      const dx = before.left - after.left, dy = before.top - after.top;
+      if (dx || dy) el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: SLIDE_MS, easing: 'ease-out' });
+    });
+    rects.current.clear();
+  }, [ids.join()]);
+
+  // Cells slide for a moment after each move; hovering while they slide would
+  // read the pointer as over a different cell and swap straight back.
+  const settledAt = useRef(0);
+  const SLIDE_MS = 180;
+
+  const place = (next: string[]) => {
+    if (next.join() === ids.join()) return;
+    measure();
+    settledAt.current = performance.now() + SLIDE_MS;
+    setOrder(next);
+  };
+
+  const save = async (next: string[]) => {
+    await api.post('/order', { ids: next }).catch(() => {});
+    onSaved();
+  };
+
+  // Where in the card it was picked up, so we can follow the card itself
+  // (not the pointer) as it moves.
+  const grab = useRef({ x: 0, y: 0, w: 0, h: 0 });
+
+  /** The slot the held card's center is over: a sprout's id, null for an empty cell, undefined for none. */
+  const slotUnderCard = (e: DragEvent): string | null | undefined => {
+    const box = tray.current?.getBoundingClientRect();
+    if (!box) return undefined;
+    const cx = e.clientX - grab.current.x + grab.current.w / 2 - box.left;
+    const cy = e.clientY - grab.current.y + grab.current.h / 2 - box.top;
+    for (const el of tray.current!.querySelectorAll<HTMLElement>('[data-id], .cell-empty')) {
+      // Layout positions, so cells mid-slide are judged where they will be.
+      if (cx >= el.offsetLeft && cx < el.offsetLeft + el.offsetWidth && cy >= el.offsetTop && cy < el.offsetTop + el.offsetHeight) {
+        return el.dataset.id ?? null;
+      }
+    }
+    return undefined;
+  };
+
+  const moveTo = (id: string, target: string | null) => {
+    const without = ids.filter(x => x !== id);
+    const at = target === null ? without.length : without.indexOf(target);
+    // Moving forward lands after the target, backward before it, which feels like swapping places.
+    const offset = target !== null && ids.indexOf(id) < ids.indexOf(target) ? 1 : 0;
+    return [...without.slice(0, at + offset), id, ...without.slice(at + offset)];
+  };
+
+  const drag = {
+    id: dragId,
+    start(e: DragEvent, id: string) {
+      dropped.current = false;
+      const card = e.currentTarget as HTMLElement;
+      const rect = card.getBoundingClientRect();
+      grab.current = { x: e.clientX - rect.left, y: e.clientY - rect.top, w: rect.width, h: rect.height };
+      // The browser snapshots the card for the drag image right after this
+      // handler; drop the hover outline first, or slivers of it show at the
+      // rounded corners (it is drawn outside the card and cropped).
+      card.classList.add('lifting');
+      setTimeout(() => card.classList.remove('lifting'), 50);
+      dragging.current = id;
+      setDragId(id);
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', id);
+    },
+    // One handler on the whole tray: the card swaps into whichever slot its
+    // center is over. After a swap its center sits in its own new slot, so it
+    // stays put until it is moved into another one.
+    over(e: DragEvent) {
+      if (!dragId) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      if (performance.now() < settledAt.current) return;
+      const target = slotUnderCard(e);
+      if (target === undefined || target === dragId) return;
+      if (target === null && ids.at(-1) === dragId) return;
+      place(moveTo(dragId, target));
+    },
+    drop(e: DragEvent) {
+      if (!dragId) return;
+      e.preventDefault();
+      dropped.current = true;
+      dragging.current = null;
+      setDragId(null);
+      void save(ids);
+    },
+    end() {
+      // Let go outside the tray: put things back.
+      if (dropped.current || !dragging.current) return;
+      dragging.current = null;
+      setDragId(null);
+      measure();
+      setOrder(null);
+    },
+  };
+
+  const moveBy = (id: string, step: number) => {
+    const i = ids.indexOf(id), j = i + step;
+    if (j < 0 || j >= ids.length) return;
+    const next = [...ids];
+    [next[i], next[j]] = [next[j], next[i]];
+    place(next);
+    void save(next);
+    requestAnimationFrame(() => tray.current?.querySelector<HTMLElement>(`[data-id="${id}"]`)?.focus());
+  };
+
+  // Once the server has the new order, follow it again.
+  useEffect(() => { if (order && !dragId && source.map(s => s.id).join() === order.join()) setOrder(null); }, [source, order, dragId]);
+
+  return { sprouts, tray, drag, moveBy };
 }

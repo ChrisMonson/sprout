@@ -86,8 +86,8 @@ export async function importSprout(db: Db, bytes: Buffer): Promise<string> {
     writeFileSync(p.understanding, file.memory?.understanding || '# Understanding\n');
 
     const now = Date.now();
-    db.prepare('INSERT INTO sprouts (id, name, seed, conversation, feel, status, growing, created_at, last_activity) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
-      .run(id, file.sprout.name || 'Imported sprout', file.sprout.seed || '', file.sprout.conversation || '[]', file.sprout.feel ?? null, 'ready', 0, now, now);
+    db.prepare('INSERT INTO sprouts (id, name, seed, conversation, feel, status, growing, created_at, last_activity, position) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(id, file.sprout.name || 'Imported sprout', file.sprout.seed || '', file.sprout.conversation || '[]', file.sprout.feel ?? null, 'ready', 0, now, now, q.frontPosition(db));
     const insert = db.prepare('INSERT INTO growth (sprout_id, ts, kind, title, detail, commit_sha, rewindable) VALUES (?, ?, ?, ?, ?, ?, ?)');
     for (const g of file.growth ?? []) insert.run(id, g.ts, g.kind, g.title, g.detail, g.commit_sha, g.rewindable ? 1 : 0);
     insert.run(id, now, 'import', 'Replanted', file.data ? 'Replanted from a .sprout file, with its data.' : 'Replanted from a .sprout file, without its data.', await git(p.live, 'rev-parse', 'HEAD'), 0);

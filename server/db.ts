@@ -109,7 +109,20 @@ export function openDb(file: string): Db {
   db.exec('PRAGMA journal_mode = WAL');
   db.exec('PRAGMA busy_timeout = 3000');
   db.exec(SCHEMA);
+  upgrade(db);
   return db;
+}
+
+/** Columns added after a greenhouse.db may already exist (CREATE TABLE IF NOT EXISTS won't add them). */
+function upgrade(db: Db) {
+  const columns = (db.prepare('PRAGMA table_info(sprouts)').all() as { name: string }[]).map(c => c.name);
+  if (!columns.includes('position')) {
+    db.exec('ALTER TABLE sprouts ADD COLUMN position INTEGER NOT NULL DEFAULT 0');
+    // Keep today's order (newest first) as the starting arrangement.
+    const ids = db.prepare('SELECT id FROM sprouts ORDER BY created_at DESC').all() as { id: string }[];
+    const set = db.prepare('UPDATE sprouts SET position = ? WHERE id = ?');
+    ids.forEach((row, i) => set.run(i, row.id));
+  }
 }
 
 export interface SproutRow {
@@ -128,6 +141,7 @@ export interface SproutRow {
   paused_until: number;
   pending_apply: string | null;
   watch: string | null;
+  position: number;
 }
 
 export interface Turn {
@@ -142,7 +156,25 @@ export const q = {
     return db.prepare('SELECT * FROM sprouts WHERE id = ?').get(id) as unknown as SproutRow | undefined;
   },
   sprouts(db: Db) {
-    return db.prepare('SELECT * FROM sprouts ORDER BY created_at DESC').all() as unknown as SproutRow[];
+    return db.prepare('SELECT * FROM sprouts ORDER BY position, created_at DESC').all() as unknown as SproutRow[];
+  },
+  /** A position in front of every sprout, so new ones arrive first. */
+  frontPosition(db: Db): number {
+    return ((db.prepare('SELECT MIN(position) AS m FROM sprouts').get() as { m: number | null }).m ?? 0) - 1;
+  },
+  /** Saves the order the person arranged; ids not listed keep their place after them. */
+  reorder(db: Db, ids: string[]) {
+    const set = db.prepare('UPDATE sprouts SET position = ? WHERE id = ?');
+    const listed = new Set(ids);
+    const rest = q.sprouts(db).map(s => s.id).filter(id => !listed.has(id));
+    db.exec('BEGIN');
+    try {
+      [...ids, ...rest].forEach((id, i) => set.run(i, id));
+      db.exec('COMMIT');
+    } catch (err) {
+      db.exec('ROLLBACK');
+      throw err;
+    }
   },
   update(db: Db, id: string, fields: Partial<SproutRow>) {
     const keys = Object.keys(fields);
