@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { api, timeOf, useStream, type Bud, type Feel, type SproutDetail, type Target } from './api.ts';
 import { Bud as BudIcon, Check, Close, Expand, Grow, History, Leaf, Send, Shrink, Target as TargetIcon } from './icons.tsx';
 import { go } from './App.tsx';
@@ -20,11 +20,15 @@ export default function SproutView({ id, full }: { id: string; full: boolean; fe
   const exitFull = () => go(`/s/${id}`);
 
   const refresh = useCallback(() => {
-    api.get<SproutDetail>(`/sprouts/${id}`).then(setDetail).catch(() => {});
+    // Fill in lists an older greenhouse server doesn't send yet (see App.tsx).
+    api.get<SproutDetail>(`/sprouts/${id}`).then(d => setDetail({
+      ...d, growth: d.growth ?? [], buds: d.buds ?? [], whispers: d.whispers ?? [], turns: d.turns ?? [], notifications: d.notifications ?? [],
+    })).catch(() => {});
   }, [id]);
   useEffect(refresh, [refresh]);
 
   const status = detail?.sprout.status;
+  useEffect(() => { if (status === 'removed') go('/'); }, [status]);
   useEffect(() => {
     if (status !== 'ready' || url) return;
     api.post<{ url: string }>(`/sprouts/${id}/start`).then(r => setUrl(r.url)).catch(err => setStartError((err as Error).message));
@@ -50,6 +54,7 @@ export default function SproutView({ id, full }: { id: string; full: boolean; fe
 
   if (!detail) return <div className="app" />;
   const { sprout } = detail;
+  if (sprout.status === 'removed') return <div className="app" />;
 
   if (sprout.status === 'planting' || (sprout.status === 'ready' && !url && !startError)) {
     return <Sprouting name={sprout.name} lines={lines} planting={sprout.status === 'planting'} />;
@@ -60,6 +65,7 @@ export default function SproutView({ id, full }: { id: string; full: boolean; fe
         <h1 className="title-l">This one didn’t take root</h1>
         <p className="lede">Something went wrong while planting “{sprout.seed}”. Try planting it again; it usually works the second time.</p>
         <a className="btn" style={{ display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }} href="#/new">Plant again</a>
+        <RemoveSprout id={id} name={sprout.name} />
         <a href="#/">Back to your sprouts</a>
       </div></main></div>
     );
@@ -126,6 +132,7 @@ export default function SproutView({ id, full }: { id: string; full: boolean; fe
       )}
 
       {historyOpen && <HistoryDrawer detail={detail} onClose={() => setHistoryOpen(false)} onRewind={undo}
+        footer={<RemoveSprout id={id} name={sprout.name} />}
         onCancelNotification={nid => api.post(`/sprouts/${id}/notify/cancel`, { id: nid }).then(refresh).catch(() => {})} />}
     </div>
   );
@@ -263,8 +270,8 @@ function BudCard({ id, bud, onDone }: { id: string; bud: Bud; onDone: () => void
   );
 }
 
-function HistoryDrawer({ detail, onClose, onRewind, onCancelNotification }: {
-  detail: SproutDetail; onClose: () => void; onRewind: (growthId: number) => void; onCancelNotification: (id: number) => void;
+function HistoryDrawer({ detail, onClose, onRewind, onCancelNotification, footer }: {
+  detail: SproutDetail; onClose: () => void; onRewind: (growthId: number) => void; onCancelNotification: (id: number) => void; footer: ReactNode;
 }) {
   const day = (ts: number) => new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric' });
   const whisperStatus: Record<string, string> = {
@@ -320,6 +327,36 @@ function HistoryDrawer({ detail, onClose, onRewind, onCancelNotification }: {
           </div>
         ))}
       </section>
+      <section className="drawer-footer">{footer}</section>
     </aside>
+  );
+}
+
+/** Moves a sprout to Removed on the home page, after one confirmation. Nothing is deleted. */
+function RemoveSprout({ id, name }: { id: string; name: string }) {
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState('');
+  const remove = async () => {
+    try {
+      await api.post(`/sprouts/${id}/remove`);
+      go('/');
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+  if (!confirming) {
+    return <button className="btn quiet small" onClick={() => setConfirming(true)}>Remove this sprout…</button>;
+  }
+  return (
+    <div className="confirm" role="group" aria-label="Confirm removal">
+      <p style={{ margin: 0, fontSize: 14, lineHeight: 1.45 }}>
+        Remove {name || 'this sprout'}? It stops running and moves to <strong>Removed</strong> on the home page, with its data, until you bring it back or delete it for good.
+      </p>
+      {error && <p className="error" role="alert" style={{ margin: 0 }}>{error}</p>}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <button className="btn small danger" onClick={remove}>Remove</button>
+        <button className="btn quiet small" onClick={() => { setConfirming(false); setError(''); }}>Cancel</button>
+      </div>
+    </div>
   );
 }

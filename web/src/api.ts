@@ -7,6 +7,7 @@ export interface AppState {
   pausedUntil: number;
   feels: Feel[];
   sprouts: SproutSummary[];
+  removed: { id: string; name: string; seed: string; removedAt: number }[];
 }
 export interface NextQuestion { done: boolean; question: string; suggestions: string[]; name: string; reply: string }
 export interface Target { sproutId: string | null; path: string; tag: string; text: string; rect?: unknown }
@@ -43,6 +44,7 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T>
 export const api = {
   get: <T>(path: string) => call<T>('GET', path),
   post: <T>(path: string, body?: unknown) => call<T>('POST', path, body ?? {}),
+  delete: <T>(path: string) => call<T>('DELETE', path),
 };
 
 /** Live messages from the greenhouse. */

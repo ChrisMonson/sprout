@@ -90,6 +90,11 @@ CREATE TABLE IF NOT EXISTS notifications (
   sent_at INTEGER
 );
 CREATE INDEX IF NOT EXISTS notifications_due ON notifications (status, due_at);
+CREATE TABLE IF NOT EXISTS removed (
+  sprout_id TEXT PRIMARY KEY,
+  removed_at INTEGER NOT NULL,
+  prev_status TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT
@@ -113,7 +118,7 @@ export interface SproutRow {
   seed: string;
   conversation: string;
   feel: string | null;
-  status: 'seeding' | 'planting' | 'ready' | 'failed';
+  status: 'seeding' | 'planting' | 'ready' | 'failed' | 'removed';
   growing: number;
   created_at: number;
   last_activity: number;

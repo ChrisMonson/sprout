@@ -13,6 +13,7 @@ export const paths = {
   runtime: join(HOME, '.runtime'),
   nodeModules: join(HOME, 'node_modules'),
   sprouts: join(HOME, 'sprouts'),
+  removed: join(HOME, 'removed'),
   turns: join(HOME, 'turns'),
   template: join(REPO, 'template'),
   briefs: join(REPO, 'briefs'),

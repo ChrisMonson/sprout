@@ -22,7 +22,11 @@ export default function App() {
   const route = useRoute();
   const [state, setState] = useState<AppState | null>(null);
 
-  const refresh = useCallback(() => { api.get<AppState>('/state').then(setState).catch(() => {}); }, []);
+  // Fill in lists an older greenhouse server doesn't send yet, so a UI that
+  // hot-reloaded ahead of its server still renders.
+  const refresh = useCallback(() => {
+    api.get<AppState>('/state').then(s => setState({ ...s, sprouts: s.sprouts ?? [], removed: s.removed ?? [] })).catch(() => {});
+  }, []);
   useEffect(refresh, [refresh]);
   useStream(msg => { if (msg.type === 'sprout' || msg.type === 'turn') refresh(); });
 
@@ -30,8 +34,9 @@ export default function App() {
 
   const sproutMatch = /^\/s\/([\w-]+)(\/full)?/.exec(route);
   if (sproutMatch) return <SproutView key={sproutMatch[1]} id={sproutMatch[1]} full={!!sproutMatch[2]} feels={state.feels} />;
-  if (route === '/new' || state.sprouts.length === 0) {
-    return <NewSprout feels={state.feels} credentials={state.credentials} canGoHome={state.sprouts.length > 0} />;
+  const nothingYet = state.sprouts.length === 0 && state.removed.length === 0;
+  if (route === '/new' || nothingYet) {
+    return <NewSprout feels={state.feels} credentials={state.credentials} canGoHome={!nothingYet} />;
   }
   return <Home state={state} />;
 }
@@ -59,8 +64,43 @@ function Home({ state }: { state: AppState }) {
               <span className="status"><i className={s.busy ? 'busy' : s.growing && s.status === 'ready' ? 'on' : ''} />{statusText(s)}</span>
             </a>
           ))}
+          {state.sprouts.length === 0 && <p className="muted" style={{ margin: 0 }}>Nothing growing right now.</p>}
         </div>
+        {state.removed.length > 0 && (
+          <section className="removed" aria-labelledby="removed-title">
+            <h2 id="removed-title">Removed</h2>
+            <p className="muted" style={{ margin: 0, fontSize: 14 }}>Removed sprouts keep everything, including their data, until you delete them forever.</p>
+            {state.removed.map(r => <RemovedRow key={r.id} sprout={r} />)}
+          </section>
+        )}
       </main>
+    </div>
+  );
+}
+
+function RemovedRow({ sprout }: { sprout: AppState['removed'][number] }) {
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState('');
+  const act = (fn: () => Promise<unknown>) => fn().catch(err => setError((err as Error).message));
+  return (
+    <div className="removed-row">
+      <div className="body">
+        <span className="n">{sprout.name || 'Unnamed sprout'}</span>
+        <span className="muted" style={{ fontSize: 14 }}>Removed {new Date(sprout.removedAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
+        {error && <span className="error" role="alert">{error}</span>}
+      </div>
+      {confirming ? (
+        <div className="actions" role="group" aria-label="Confirm delete">
+          <span style={{ fontSize: 14 }}>Delete it and its data for good?</span>
+          <button className="btn small danger" onClick={() => act(() => api.delete(`/sprouts/${sprout.id}`))}>Delete forever</button>
+          <button className="btn quiet small" onClick={() => setConfirming(false)}>Keep it</button>
+        </div>
+      ) : (
+        <div className="actions">
+          <button className="btn small" onClick={() => act(() => api.post(`/sprouts/${sprout.id}/restore`))}>Bring back</button>
+          <button className="btn quiet small" onClick={() => setConfirming(true)}>Delete forever…</button>
+        </div>
+      )}
     </div>
   );
 }

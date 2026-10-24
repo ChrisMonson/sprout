@@ -169,6 +169,17 @@ h1 { margin: 0; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; }
 .sprout-card .s { font-size: 14px; color: var(--gh-muted); flex: 1; }
 .banner { background: #FFF6E5; border: 1px solid #F0D9A8; color: #5C4510; border-radius: 12px; padding: 12px 16px; font-size: 15px; }
 
+.btn.danger { background: #A0281C; }
+.btn.danger:hover:not(:disabled) { background: #7E1F15; }
+.confirm { display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid #E8C4BE; background: #FDF3F1; border-radius: 12px; text-align: left; max-width: 420px; }
+.drawer-footer { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--gh-line); align-items: flex-start; }
+.removed { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+.removed h2 { margin: 0; font-size: 20px; font-weight: 600; }
+.removed-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 14px; border: 1px dashed var(--gh-line); border-radius: 12px; background: var(--gh-surface); }
+.removed-row .body { flex: 1; min-width: 180px; display: flex; flex-direction: column; gap: 2px; }
+.removed-row .n { font-weight: 600; }
+.removed-row .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+
 @keyframes rise { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
 @keyframes grow { from { stroke-dashoffset: 120; } to { stroke-dashoffset: 0; } }

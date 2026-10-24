@@ -8,6 +8,7 @@ import { nextQuestion, type Exchange } from './agent/questions.ts';
 import type { CredentialStatus } from './agent/credentials.ts';
 import { plant, isBusy, pausedUntil } from './scheduler.ts';
 import { rewind } from './apply.ts';
+import { removeSprout, restoreSprout, deleteForever, listRemoved } from './remove.ts';
 import { schedule, cancel, cancelById, upcoming, type NotificationRequest } from './notifications.ts';
 
 const EVENT_KINDS = new Set(['click', 'input', 'submit', 'nav', 'rage', 'error', 'console_error', 'api_error']);
@@ -32,7 +33,8 @@ export function createApi(db: Db, credentials: () => CredentialStatus | null) {
     credentials: credentials(),
     pausedUntil: pausedUntil(),
     feels: FEELS.map(f => ({ id: f.id, name: f.name, blurb: f.blurb, tokens: f.tokens, fonts: f.fonts })),
-    sprouts: q.sprouts(db).filter(s => s.status !== 'seeding').map(s => ({
+    removed: listRemoved(db),
+    sprouts: q.sprouts(db).filter(s => s.status !== 'seeding' && s.status !== 'removed').map(s => ({
       id: s.id, name: s.name, seed: s.seed, status: s.status, growing: !!s.growing, busy: isBusy(s.id), createdAt: s.created_at,
     })),
   }));
@@ -103,6 +105,7 @@ export function createApi(db: Db, credentials: () => CredentialStatus | null) {
   app.post('/sprouts/:id/start', async c => {
     const row = sproutOr404(c.req.param('id'));
     if (row.status === 'seeding') throw new HttpError(409, 'Not planted yet.');
+    if (row.status === 'removed') throw new HttpError(409, 'This sprout was removed.');
     const port = await ensureDevServer(db, row.id);
     return c.json({ url: `http://127.0.0.1:${port}/` });
   });
@@ -185,6 +188,24 @@ export function createApi(db: Db, credentials: () => CredentialStatus | null) {
     const { on } = await c.req.json<{ on: boolean }>();
     q.update(db, row.id, { growing: on ? 1 : 0 });
     bus.send({ type: 'sprout', sproutId: row.id });
+    return c.json({ ok: true });
+  });
+
+  app.post('/sprouts/:id/remove', c => {
+    const row = sproutOr404(c.req.param('id'));
+    try { removeSprout(db, row.id, isBusy(row.id)); } catch (err) { throw new HttpError(409, (err as Error).message); }
+    return c.json({ ok: true });
+  });
+
+  app.post('/sprouts/:id/restore', c => {
+    const row = sproutOr404(c.req.param('id'));
+    try { restoreSprout(db, row.id); } catch (err) { throw new HttpError(409, (err as Error).message); }
+    return c.json({ ok: true });
+  });
+
+  app.delete('/sprouts/:id', c => {
+    const row = sproutOr404(c.req.param('id'));
+    try { deleteForever(db, row.id); } catch (err) { throw new HttpError(409, (err as Error).message); }
     return c.json({ ok: true });
   });
 
