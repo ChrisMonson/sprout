@@ -19,7 +19,7 @@ export interface SproutDetail {
   growth: Growth[];
   buds: Bud[];
   whispers: Whisper[];
-  turns: { id: number; kind: string; status: string; summary: string | null; started_at: number }[];
+  turns: { id: number; kind: string; reason: string | null; status: string; summary: string | null; started_at: number }[];
   notifications: { id: number; title: string; body: string | null; dueAt: number }[];
 }
 

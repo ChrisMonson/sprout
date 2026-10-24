@@ -74,6 +74,8 @@ export default function SproutView({ id, full }: { id: string; full: boolean; fe
 
   if (!detail) return <div className="app" />;
   const { sprout } = detail;
+  // Until the agent says what it's doing, say why it woke up.
+  const working = lines.at(-1) ?? wakeReason(detail.turns.find(t => t.status === 'running'));
   if (sprout.status === 'removed') return <div className="app" />;
 
   if (sprout.status === 'planting' || (sprout.status === 'ready' && !url && !startError)) {
@@ -136,7 +138,7 @@ export default function SproutView({ id, full }: { id: string; full: boolean; fe
           <aside className="card-float working" aria-live="polite">
             <span className="pulse-dot" aria-hidden="true" />
             <span style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
-              <span style={{ fontWeight: 600 }}>{lines.at(-1) ?? 'Thinking about what you said…'}</span>
+              <span style={{ fontWeight: 600 }}>{working}</span>
               <span className="muted" style={{ fontSize: 14 }}>Keep using it. Nothing will move while you’re in the middle of something.</span>
             </span>
             <button className="fold" aria-label="Hide" title="Hide" onClick={() => { clearTimeout(workingTimer.current); setWorkingOpen(false); }}><Close size={12} /></button>
@@ -149,7 +151,7 @@ export default function SproutView({ id, full }: { id: string; full: boolean; fe
           {sprout.busy && !workingOpen && (
             <button className="pill" onClick={() => openWorking(15_000)} title="What Sprout is doing">
               <span className="pulse-dot small" aria-hidden="true" />
-              <span className="pill-text">{lines.at(-1) ?? 'Working…'}</span>
+              <span className="pill-text">{working}</span>
             </button>
           )}
           {!sprout.busy && bud && foldedBuds.includes(bud.id) && (
@@ -396,4 +398,16 @@ function RemoveSprout({ id, name }: { id: string; name: string }) {
       </div>
     </div>
   );
+}
+
+/** Plain words for why an agent turn started. Reasons come from server/wake.ts. */
+function wakeReason(turn: SproutDetail['turns'][number] | undefined): string {
+  if (!turn) return 'Working…';
+  if (turn.kind === 'plant') return 'Planting…';
+  if (turn.kind === 'observe') return 'Looking at how it’s been used…';
+  const reason = turn.reason ?? '';
+  if (reason.includes('asked')) return 'Thinking about what you said…';
+  if (reason.includes('rolled back')) return 'Working out what went wrong with the last change…';
+  if (reason.includes('error')) return 'Looking into an error…';
+  return 'Working on an improvement…';
 }

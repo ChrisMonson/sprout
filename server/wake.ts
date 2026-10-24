@@ -21,6 +21,7 @@ export interface WakeInput {
   lastObserveAt: number;
 }
 
+/** The reason wording is matched by wakeReason() in web/src/SproutView.tsx. */
 export type Wake = { kind: 'grow' | 'observe'; reason: string } | null;
 
 export function nextTurn(w: WakeInput): Wake {
