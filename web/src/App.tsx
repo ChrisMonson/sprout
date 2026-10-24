@@ -11,8 +11,22 @@ function useRoute() {
     // Route changes animate with a view transition: a tray cell grows into
     // its sprout's frame and shrinks back (see view-transition-name below).
     const onChange = () => {
-      const opening = /^#\/s\/([\w-]+)/.exec(location.hash)?.[1];
-      if (opening) transitionSprout = opening;
+      const sproutIn = (hash: string) => /^#\/s\/([\w-]+)/.exec(hash)?.[1];
+      const opening = sproutIn(location.hash);
+      const leaving = sproutIn(shownHash);
+      const toHome = (location.hash.replace(/^#/, '') || '/') === '/';
+      shownHash = location.hash;
+      // A named element with nothing to become on the new page hovers over it
+      // as its own layer until the transition ends, so only names with a
+      // counterpart survive. Going home, the sprout's frame shrinks into its
+      // cell; between a sprout's normal and full views, its frame carries over.
+      if (!toHome) {
+        const unname = (selector: string) => document.querySelectorAll<HTMLElement>(selector).forEach(el => { el.style.viewTransitionName = ''; });
+        unname('a.sprout-card, a.sprout-card .n');
+        if (leaving && leaving !== opening) unname('[style*="view-transition-name"]');
+        else if (leaving) unname('.topbar [style*="view-transition-name"]'); // the header isn't shown in the full view
+        transitionSprout = opening ?? null;
+      }
       // The clicked cell must be named before the old view is captured.
       const cell = opening && document.querySelector<HTMLElement>(`a.sprout-card[href="#/s/${opening}"]`);
       if (cell) {
@@ -35,6 +49,8 @@ function useRoute() {
  * each its own animated layer, and the others would float over the new page.
  */
 let transitionSprout: string | null = null;
+/** The route currently on screen, so a route change knows where it came from. */
+let shownHash = location.hash;
 
 export function go(path: string) {
   location.hash = path;
