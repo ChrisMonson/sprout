@@ -83,7 +83,7 @@ function Home({ state, onRefresh }: { state: AppState; onRefresh: () => void }) 
             </a>
           ))}
           {Array.from({ length: emptyCells(state.sprouts.length) }, (_, i) => i === 0
-            ? <a key="plant" className="cell-empty plant" href="#/new"><span aria-hidden="true">+</span>Plant something new</a>
+            ? <a key="plant" className="cell-empty plant" href="#/new"><span aria-hidden="true">+</span>Grow something new</a>
             : <span key={i} className="cell-empty extra" aria-hidden="true" />)}
         </div>
         {state.removed.length > 0 && (
