@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, timeOf, useStream, type Bud, type Feel, type SproutDetail, type Target } from './api.ts';
-import { Bud as BudIcon, Check, Close, Grow, History, Leaf, Send, Target as TargetIcon } from './icons.tsx';
+import { Bud as BudIcon, Check, Close, Expand, Grow, History, Leaf, Send, Shrink, Target as TargetIcon } from './icons.tsx';
+import { go } from './App.tsx';
 
 interface Toast { text: string; undoGrowthId?: number }
 
-export default function SproutView({ id }: { id: string; feels: Feel[] }) {
+export default function SproutView({ id, full }: { id: string; full: boolean; feels: Feel[] }) {
   const [detail, setDetail] = useState<SproutDetail | null>(null);
   const [url, setUrl] = useState<string | null>(null);
   const [startError, setStartError] = useState('');
@@ -12,6 +13,11 @@ export default function SproutView({ id }: { id: string; feels: Feel[] }) {
   const [toast, setToast] = useState<Toast | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  // The tool can fill the browser window with Sprout's own UI hidden. It is a
+  // route (#/s/<id>/full) so it can be bookmarked.
+  const enterFull = () => go(`/s/${id}/full`);
+  const exitFull = () => go(`/s/${id}`);
 
   const refresh = useCallback(() => {
     api.get<SproutDetail>(`/sprouts/${id}`).then(setDetail).catch(() => {});
@@ -70,7 +76,10 @@ export default function SproutView({ id }: { id: string; feels: Feel[] }) {
   };
 
   return (
-    <div className="app" style={{ height: '100%' }}>
+    <div className={full ? 'app full' : 'app'} style={{ height: '100%' }}>
+      {full ? (
+        <button className="exit-full" onClick={exitFull} aria-label="Show Sprout" title="Show Sprout"><Shrink /></button>
+      ) : (
       <header className="topbar">
         <a className="brand" href="#/"><Leaf />Sprout</a>
         <span aria-hidden="true" style={{ color: '#AEB9B1' }}>/</span>
@@ -87,12 +96,14 @@ export default function SproutView({ id }: { id: string; feels: Feel[] }) {
             <span className="track" aria-hidden="true" />Growth
           </button>
           <button className="pill-btn" aria-expanded={historyOpen} onClick={() => setHistoryOpen(o => !o)}><History />History</button>
+          <button className="pill-btn" onClick={enterFull} aria-label="Hide Sprout and fill the window" title="Hide Sprout and fill the window"><Expand /></button>
         </div>
       </header>
+      )}
 
       <div className="stage">
         {url
-          ? <ToolFrame id={id} url={url} name={sprout.name} growing={sprout.growing} onSent={text => showToast({ text })} />
+          ? <ToolFrame id={id} url={url} name={sprout.name} growing={sprout.growing} full={full} onSent={text => showToast({ text })} />
           : <p className="error" role="alert">{startError}</p>}
 
         {sprout.busy && (
@@ -140,11 +151,14 @@ function Sprouting({ name, lines, planting }: { name: string; lines: string[]; p
 }
 
 /** The live tool, plus the whisper bar that talks to the observer inside it. */
-function ToolFrame({ id, url, name, growing, onSent }: { id: string; url: string; name: string; growing: boolean; onSent: (text: string) => void }) {
+function ToolFrame({ id, url, name, growing, full, onSent }: { id: string; url: string; name: string; growing: boolean; full: boolean; onSent: (text: string) => void }) {
   const frame = useRef<HTMLIFrameElement>(null);
   const [pointing, setPointing] = useState(false);
   const [target, setTarget] = useState<Target | null>(null);
   const [text, setText] = useState('');
+  // In full screen the whisper bar folds into a small button until it's needed.
+  const [open, setOpen] = useState(false);
+  const folded = full && !open && !pointing && !target && !text;
   const input = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -174,6 +188,7 @@ function ToolFrame({ id, url, name, growing, onSent }: { id: string; url: string
     setText('');
     const sentTarget = target;
     setTarget(null);
+    setOpen(false);
     try {
       await api.post(`/sprouts/${id}/whisper`, { text: t, target: sentTarget });
       onSent(growing ? 'Heard. Sprout will work on it, and change things when you pause.' : 'Saved. Sprout will look at it when growth is back on.');
@@ -187,6 +202,9 @@ function ToolFrame({ id, url, name, growing, onSent }: { id: string; url: string
   return (
     <>
       <iframe ref={frame} className="frame" src={url} title={name || 'Your tool'} />
+      {folded ? (
+        <button className="whisper-fab" onClick={() => { setOpen(true); setTimeout(() => input.current?.focus(), 0); }} aria-label="Tell Sprout something" title="Tell Sprout something"><Leaf size={22} /></button>
+      ) : (
       <div className="whisper-wrap">
         <div className="whisper">
           {pointing && (
@@ -204,9 +222,11 @@ function ToolFrame({ id, url, name, growing, onSent }: { id: string; url: string
             <input id="whisper" ref={input} value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void send(); }}
               placeholder={!growing ? 'Growth is resting. Notes will wait for later.' : target ? 'What should change here?' : `Tell Sprout anything about ${name || 'your tool'}…`} />
             <button className="icon-btn" aria-label="Send to Sprout" style={{ background: 'var(--gh-green)', color: '#fff' }} onClick={send}><Send /></button>
+            {full && <button className="icon-btn" aria-label="Hide" title="Hide" style={{ background: 'transparent', color: 'var(--gh-on-dark-muted)' }} onClick={() => { setOpen(false); setTarget(null); if (pointing) togglePoint(); }}><Close size={16} /></button>}
           </div>
         </div>
       </div>
+      )}
     </>
   );
 }

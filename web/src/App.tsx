@@ -28,8 +28,8 @@ export default function App() {
 
   if (!state) return <div className="app" />;
 
-  const sproutMatch = /^\/s\/([\w-]+)/.exec(route);
-  if (sproutMatch) return <SproutView key={sproutMatch[1]} id={sproutMatch[1]} feels={state.feels} />;
+  const sproutMatch = /^\/s\/([\w-]+)(\/full)?/.exec(route);
+  if (sproutMatch) return <SproutView key={sproutMatch[1]} id={sproutMatch[1]} full={!!sproutMatch[2]} feels={state.feels} />;
   if (route === '/new' || state.sprouts.length === 0) {
     return <NewSprout feels={state.feels} credentials={state.credentials} canGoHome={state.sprouts.length > 0} />;
   }

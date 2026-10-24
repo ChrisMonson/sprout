@@ -42,3 +42,11 @@ export const Grow = () => (
     <path className="lf lf2" d="M48 60c0-11-8-18-21-18 0 11 8 18 21 18z" fill="#E6EFE8" />
   </svg>
 );
+
+export const Expand = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" strokeWidth={2} {...base}><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg>
+);
+
+export const Shrink = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" strokeWidth={2} {...base}><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" /></svg>
+);
