@@ -1,0 +1,35 @@
+# Packages Sprout as a macOS app. Personal use for now: arm64, ad-hoc signed.
+appId: com.cmonson.sprout
+productName: Sprout
+directories:
+  output: release
+files:
+  - dist/desktop/**/*
+  - package.json
+# A binary inside the asar archive can't be executed, so the Claude Code
+# binary the Agent SDK runs stays outside it.
+asarUnpack:
+  - node_modules/@anthropic-ai/claude-agent-sdk-darwin-arm64/**
+# Everything the greenhouse reads at runtime, laid out as in the repo.
+extraResources:
+  - { from: runtime, to: runtime }
+  - { from: template, to: template }
+  - { from: briefs, to: briefs }
+  - { from: dist/web, to: dist/web }
+  - { from: build/runtime/node_modules, to: build/runtime/node_modules }
+  # node_modules/@sprout/greenhouse links to ../../.runtime/sdk
+  - { from: build/runtime/.runtime, to: build/runtime/.runtime }
+  - { from: desktop/assets, to: desktop/assets }
+mac:
+  target:
+    - target: dir
+      arch: arm64
+    - target: dmg
+      arch: arm64
+  icon: desktop/assets/icon.icns
+  category: public.app-category.productivity
+  # Ad-hoc signature: enough for macOS to run it and show its notifications on
+  # this Mac. Hardened runtime stays off so the bundled Claude binary can JIT
+  # without extra entitlements. Developer ID signing comes with sharing.
+  identity: "-"
+  hardenedRuntime: false

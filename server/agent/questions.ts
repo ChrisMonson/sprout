@@ -3,6 +3,7 @@
 
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import { agentEnv } from './credentials.ts';
+import { claudeExecutable } from '../platform.ts';
 import { MODELS } from './runner.ts';
 
 export interface Exchange { q: string; a: string }
@@ -49,6 +50,7 @@ export async function nextQuestion(seed: string, exchange: Exchange[]): Promise<
       persistSession: false,
       maxTurns: 3,
       env: agentEnv(),
+      pathToClaudeCodeExecutable: claudeExecutable(),
       outputFormat: { type: 'json_schema', schema: SCHEMA },
     },
   });

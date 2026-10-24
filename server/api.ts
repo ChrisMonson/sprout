@@ -14,7 +14,14 @@ import { schedule, cancel, cancelById, upcoming, type NotificationRequest } from
 const EVENT_KINDS = new Set(['click', 'input', 'submit', 'nav', 'rage', 'error', 'console_error', 'api_error']);
 const REPORT_KINDS = new Set(['server_error', 'build_error']);
 
-export function createApi(db: Db, credentials: () => CredentialStatus | null) {
+export interface Host {
+  credentials(): CredentialStatus | null;
+  recheck(): Promise<CredentialStatus>;
+  signIn(): void;
+  git: boolean;
+}
+
+export function createApi(db: Db, host: Host) {
   const app = new Hono().basePath('/api');
 
   const sproutOr404 = (id: string) => {
@@ -30,7 +37,8 @@ export function createApi(db: Db, credentials: () => CredentialStatus | null) {
   });
 
   app.get('/state', c => c.json({
-    credentials: credentials(),
+    credentials: host.credentials(),
+    git: host.git,
     pausedUntil: pausedUntil(),
     feels: FEELS.map(f => ({ id: f.id, name: f.name, blurb: f.blurb, tokens: f.tokens, fonts: f.fonts })),
     removed: listRemoved(db),
@@ -38,6 +46,13 @@ export function createApi(db: Db, credentials: () => CredentialStatus | null) {
       id: s.id, name: s.name, seed: s.seed, status: s.status, growing: !!s.growing, busy: isBusy(s.id), createdAt: s.created_at,
     })),
   }));
+
+  app.post('/sign-in', c => {
+    host.signIn();
+    return c.json({ ok: true });
+  });
+
+  app.post('/sign-in/check', async c => c.json(await host.recheck()));
 
   app.get('/stream', c => streamSSE(c, async stream => {
     const send = (msg: BusMessage) => { void stream.writeSSE({ data: JSON.stringify(msg) }); };

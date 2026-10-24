@@ -3,6 +3,8 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const REPO = dirname(dirname(fileURLToPath(import.meta.url)));
+/** Where the template, briefs, runtime and built UI live: the repo, or the app's Resources folder. */
+export const RESOURCES = process.env.SPROUT_RESOURCES ?? REPO;
 export const HOME = process.env.SPROUT_HOME ?? join(homedir(), 'Sprout');
 export const PORT = Number(process.env.SPROUT_PORT ?? 4100);
 export const GREENHOUSE_URL = `http://127.0.0.1:${PORT}`;
@@ -15,10 +17,15 @@ export const paths = {
   sprouts: join(HOME, 'sprouts'),
   removed: join(HOME, 'removed'),
   turns: join(HOME, 'turns'),
-  template: join(REPO, 'template'),
-  briefs: join(REPO, 'briefs'),
-  runtimeSource: join(REPO, 'runtime'),
+  lock: join(HOME, 'greenhouse.lock'),
+  shimBin: join(HOME, '.runtime', 'bin'),
+  template: join(RESOURCES, 'template'),
+  briefs: join(RESOURCES, 'briefs'),
+  runtimeSource: join(RESOURCES, 'runtime'),
+  /** Dependencies installed at build time, shipped inside the app. */
+  prebuiltModules: join(RESOURCES, 'build', 'runtime', 'node_modules'),
   web: join(REPO, 'web'),
+  webDist: join(RESOURCES, 'dist', 'web'),
 };
 
 export function sproutPaths(id: string) {

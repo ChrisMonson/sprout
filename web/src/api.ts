@@ -3,7 +3,8 @@ import { useEffect, useRef } from 'react';
 export interface Feel { id: string; name: string; blurb: string; tokens: Record<string, string>; fonts: string }
 export interface SproutSummary { id: string; name: string; seed: string; status: string; growing: boolean; busy: boolean; createdAt: number }
 export interface AppState {
-  credentials: { ok: boolean; message: string } | null;
+  credentials: { ok: boolean; message: string; signedOut?: boolean } | null;
+  git?: boolean;
   pausedUntil: number;
   feels: Feel[];
   sprouts: SproutSummary[];

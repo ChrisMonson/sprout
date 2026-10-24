@@ -5,11 +5,12 @@
 
 import { query, type SDKMessage } from '@anthropic-ai/claude-agent-sdk';
 import { createWriteStream, mkdirSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { dirname, join, relative } from 'node:path';
 import { paths, sproutPaths } from '../paths.ts';
 import { bus } from '../bus.ts';
 import type { Db } from '../db.ts';
 import { agentEnv } from './credentials.ts';
+import { claudeExecutable } from '../platform.ts';
 import { checkToolUse } from './confine.ts';
 import { createSproutTools, type TurnContext } from './tools.ts';
 
@@ -39,6 +40,13 @@ export interface TurnOutcome {
 }
 
 const BUILD_TOOLS = ['Read', 'Write', 'Edit', 'Glob', 'Grep', 'Bash'];
+
+/** Inside the app, the agent's `node` shim runs the app's binary, so Bash must be able to read it. */
+function appBundle(): string[] {
+  if (!process.versions.electron) return [];
+  const i = process.execPath.indexOf('.app/');
+  return [i >= 0 ? process.execPath.slice(0, i + 4) : dirname(process.execPath)];
+}
 const LOOK_TOOLS = ['Read', 'Glob', 'Grep'];
 
 export async function runTurn(spec: TurnSpec): Promise<TurnOutcome> {
@@ -92,6 +100,7 @@ export async function runTurn(spec: TurnSpec): Promise<TurnOutcome> {
         settingSources: [],
         strictMcpConfig: true,
         env: agentEnv(),
+        pathToClaudeCodeExecutable: claudeExecutable(),
         systemPrompt: { type: 'preset', preset: 'claude_code', append: spec.brief },
         tools: canBuild ? BUILD_TOOLS : LOOK_TOOLS,
         disallowedTools: ['WebFetch', 'WebSearch', 'Agent', 'Task', 'Skill', 'NotebookEdit'],
@@ -122,7 +131,7 @@ export async function runTurn(spec: TurnSpec): Promise<TurnOutcome> {
           filesystem: {
             allowWrite: [p.work],
             denyRead: ['~/'],
-            allowRead: [p.work, paths.nodeModules, paths.runtime, join(paths.home, 'package.json')],
+            allowRead: [p.work, paths.nodeModules, paths.runtime, join(paths.home, 'package.json'), ...appBundle()],
           },
         },
       },

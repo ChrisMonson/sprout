@@ -16,6 +16,8 @@ const { FEELS } = await import('../server/feel.ts');
 const { runGate } = await import('../server/gate.ts');
 const { backupDb } = await import('../server/snapshot.ts');
 const { DatabaseSync } = await import('node:sqlite');
+const { setPlatform, cliPlatform } = await import('../server/platform.ts');
+setPlatform(cliPlatform);
 
 describe('gate', () => {
   let id: string;

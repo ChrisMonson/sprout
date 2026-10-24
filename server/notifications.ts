@@ -1,11 +1,11 @@
 // Reminders and alerts a sprout sends to its person. Sprouts schedule them
 // through the greenhouse (see runtime/sdk), so they arrive even when no tab is
-// open: the greenhouse delivers them as macOS notifications and, if the sprout
-// is on screen, as an in-app toast.
+// open: the platform shows them as macOS notifications and, if the sprout is
+// on screen, they also appear as an in-app toast.
 
-import { execFile } from 'node:child_process';
 import { q, type Db } from './db.ts';
 import { bus } from './bus.ts';
+import { platform } from './platform.ts';
 
 export const MAX_SCHEDULED_PER_SPROUT = 50;
 /** Notifications due further in the past than this are dropped, not delivered late. */
@@ -56,15 +56,7 @@ export function takeDue(db: Db, now = Date.now()): NotificationRow[] {
 export function deliverDue(db: Db, now = Date.now()) {
   for (const n of takeDue(db, now)) {
     const name = q.sprout(db, n.sprout_id)?.name || 'Sprout';
-    showNative(name, n.title, n.body ?? '');
+    platform().notify({ sproutId: n.sprout_id, app: name, title: n.title, body: n.body ?? '' });
     bus.send({ type: 'notification', sproutId: n.sprout_id, title: n.title, body: n.body ?? '' });
   }
-}
-
-/** A macOS notification, so it reaches the person even with no Sprout tab open. */
-function showNative(app: string, title: string, body: string) {
-  if (process.platform !== 'darwin' || process.env.SPROUT_NATIVE_NOTIFICATIONS === '0') return;
-  // JSON string escaping is valid AppleScript string escaping for quotes and backslashes.
-  const script = `display notification ${JSON.stringify(body || title)} with title ${JSON.stringify(app)}${body ? ` subtitle ${JSON.stringify(title)}` : ''} sound name "default"`;
-  execFile('osascript', ['-e', script], err => { if (err) console.error('[notify]', err.message); });
 }

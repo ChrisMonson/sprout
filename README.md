@@ -24,6 +24,23 @@ npm run dev
 
 Then open http://localhost:4100. The first start installs the shared sprout runtime into `~/Sprout` and a headless Chromium used to check changes.
 
+### As a Mac app
+
+```bash
+npm run package
+```
+
+This builds `release/mac-arm64/Sprout.app` (and a `.dmg`). Drag it to Applications and open it.
+
+How the app behaves:
+- It needs no Node or npm on the Mac: its own binary runs everything, and the sprout dependencies ship inside it. It still needs git (Apple's Command Line Tools) and a Claude sign-in; if either is missing, Sprout says so and offers to open Terminal for `/login`.
+- Closing the window keeps Sprout running in the menu bar, so agents keep working and reminders keep arriving. From the menu bar icon you can open any sprout, rest or resume all of them, turn on Open at login, or quit.
+- Notifications are Sprout's own, and clicking one opens that sprout.
+- Only one greenhouse runs per Sprout folder, so `npm run dev` refuses to start while the app is open, and the other way round.
+- The build is ad-hoc signed for your own Mac. Sharing it needs Developer ID signing and notarization (not set up yet).
+
+For development, `npm run desktop` builds and runs the app without packaging it. `npx electron dist/desktop/selftest.mjs` runs the gate's pass/fail scenarios inside Electron.
+
 Settings (environment variables):
 - `SPROUT_HOME`: where sprouts live (default `~/Sprout`)
 - `SPROUT_PORT`: greenhouse port (default `4100`)
@@ -35,6 +52,7 @@ Settings (environment variables):
 
 ```
 server/        the greenhouse: API, scheduler, agent runner, gate, apply/rollback
+desktop/       the Mac app: window, menu bar, notifications, hidden-window browser check
 web/           the greenhouse UI (React): seed → questions → feel → sprouting → the tool
 runtime/       copied into SPROUT_HOME: per-sprout Vite runner, plugin, observer script
 template/      the starting point for every new sprout

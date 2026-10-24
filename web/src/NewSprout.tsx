@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { api, type AppState, type Feel, type NextQuestion } from './api.ts';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { api, type Feel, type NextQuestion } from './api.ts';
 import { Leaf, Send } from './icons.tsx';
 import { go } from './App.tsx';
 
@@ -11,7 +11,7 @@ const EXAMPLES = [
   'Remember what I talked about with each client',
 ];
 
-export default function NewSprout({ feels, credentials, canGoHome }: { feels: Feel[]; credentials: AppState['credentials']; canGoHome: boolean }) {
+export default function NewSprout({ feels, setup, canGoHome }: { feels: Feel[]; setup: ReactNode; canGoHome: boolean }) {
   const [step, setStep] = useState<'seed' | 'ask' | 'feel'>('seed');
   const [seed, setSeed] = useState('');
   const [id, setId] = useState<string | null>(null);
@@ -89,7 +89,7 @@ export default function NewSprout({ feels, credentials, canGoHome }: { feels: Fe
             <span style={{ color: 'var(--gh-green)' }}><Leaf size={44} /></span>
             <h1 className="title-xl">What do you want to grow?</h1>
             <p className="lede">Describe a tool you wish you had, in your own words. It starts small and grows the more you use it.</p>
-            {credentials && !credentials.ok && <div className="banner" role="status">{credentials.message}</div>}
+            {setup}
             <div className="composer big" style={{ width: '100%' }}>
               <label htmlFor="seed" className="sr">Describe the tool you want</label>
               <input id="seed" autoFocus value={seed} onChange={e => setSeed(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void plantSeed(); }} placeholder="Something to keep track of my sourdough starter" />

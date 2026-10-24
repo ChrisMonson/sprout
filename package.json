@@ -11,7 +11,12 @@
     "dev": "tsx server/main.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p .",
-    "test:integration": "SPROUT_INTEGRATION=1 vitest run"
+    "test:integration": "SPROUT_INTEGRATION=1 vitest run",
+    "build": "node scripts/build.mjs",
+    "build:runtime": "node scripts/build-runtime.mjs",
+    "build:icons": "electron scripts/make-icons.mjs",
+    "desktop": "npm run build && electron .",
+    "package": "npm run build && npm run build:runtime && electron-builder --mac --arm64"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "0.3.310",
@@ -24,6 +29,9 @@
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.1.2",
+    "electron": "45.0.0",
+    "electron-builder": "26.18.0",
+    "esbuild": "0.28.2",
     "playwright": "1.64.1",
     "react": "19.3.1",
     "react-dom": "19.3.1",
@@ -31,5 +39,7 @@
     "typescript": "7.0.2",
     "vite": "8.3.5",
     "vitest": "5.0.5"
-  }
+  },
+  "main": "dist/desktop/main.mjs",
+  "productName": "Sprout"
 }

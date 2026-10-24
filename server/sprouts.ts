@@ -8,6 +8,8 @@ import { git } from './git.ts';
 import { feelCss, type Feel } from './feel.ts';
 import { q, type Db } from './db.ts';
 import { bus } from './bus.ts';
+import { nodeCommand } from './platform.ts';
+import { runtimePath } from './runtime.ts';
 
 export function newSproutId(): string {
   return 's' + Date.now().toString(36) + randomBytes(2).toString('hex');
@@ -64,7 +66,8 @@ export async function spawnRunner(opts: RunnerOptions): Promise<Running> {
   const port = await freePort(opts.greenhouse ? 4201 : 4701);
   const args = [join(paths.runtime, 'runner.mjs'), '--root', opts.root, '--port', String(port), '--db', opts.db, '--sprout', opts.sproutId, '--cache', opts.cache];
   if (opts.greenhouse) args.push('--greenhouse', opts.greenhouse);
-  const proc = spawn(process.execPath, ['--no-warnings', ...args], { cwd: paths.home, stdio: ['ignore', 'pipe', 'pipe'] });
+  const node = nodeCommand();
+  const proc = spawn(node.cmd, ['--no-warnings', ...args], { cwd: paths.home, env: { ...process.env, ...node.env, PATH: runtimePath() }, stdio: ['ignore', 'pipe', 'pipe'] });
   const log = opts.logFile ? createWriteStream(opts.logFile, { flags: 'a' }) : null;
   let output = '';
   const ready = new Promise<void>((resolve, reject) => {

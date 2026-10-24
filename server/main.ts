@@ -1,73 +1,25 @@
-// Starts the greenhouse: installs the sprout runtime if needed, checks the
-// Claude sign-in, serves the UI and API on one port, and starts the scheduler.
+// Runs the greenhouse from a terminal (`npm run dev`), with the UI hot-reloading
+// in the browser. The desktop app starts the same greenhouse from desktop/.
 
-import { createServer } from 'node:http';
-import { getRequestListener } from '@hono/node-server';
-import { createServer as createVite } from 'vite';
-import react from '@vitejs/plugin-react';
-import { openDb } from './db.ts';
-import { paths, PORT } from './paths.ts';
-import { ensureRuntime, ensureBrowser } from './runtime.ts';
-import { createApi } from './api.ts';
-import { startScheduler } from './scheduler.ts';
-import { stopAll } from './sprouts.ts';
-import { checkCredentials, type CredentialStatus } from './agent/credentials.ts';
+import { PORT } from './paths.ts';
+import { startGreenhouse } from './start.ts';
+import { setPlatform, cliPlatform } from './platform.ts';
+import { ensureBrowser } from './runtime.ts';
+import { AlreadyRunning } from './lock.ts';
 
-// node:sqlite is still marked experimental; the warning is noise here.
-const emit = process.emitWarning.bind(process);
-process.emitWarning = ((warning: string | Error, ...rest: unknown[]) => {
-  if (String(warning).includes('SQLite')) return;
-  return (emit as (...a: unknown[]) => void)(warning, ...rest);
-}) as typeof process.emitWarning;
-
-console.log(`Sprout home: ${paths.home}`);
-await ensureRuntime();
+setPlatform(cliPlatform);
 await ensureBrowser();
-const db = openDb(paths.db);
 
-// Turns cut off by a stop or crash can't resume: close them out, and put
-// anything they had picked up back in the queue. A sprout left mid-plant fails.
-db.prepare("UPDATE turns SET status = 'interrupted', ended_at = ? WHERE status = 'running'").run(Date.now());
-db.prepare("UPDATE whispers SET status = 'new' WHERE status = 'taken'").run();
-db.prepare("UPDATE sprouts SET status = 'failed' WHERE status = 'planting'").run();
-
-let credentials: CredentialStatus | null = null;
-const recheck = async () => {
-  credentials = await checkCredentials();
-  console.log(credentials.ok ? 'Claude: signed in.' : `Claude: ${credentials.message}`);
-};
-void recheck();
-
-const api = createApi(db, () => credentials);
-const apiListener = getRequestListener(api.fetch);
-
-const server = createServer();
-const vite = await createVite({
-  root: paths.web,
-  configFile: false,
-  appType: 'spa',
-  plugins: [react()],
-  server: { middlewareMode: true, hmr: { server } },
-  logLevel: 'warn',
-});
-
-server.on('request', (req, res) => {
-  if (req.url?.startsWith('/api')) void apiListener(req, res);
-  else vite.middlewares(req, res);
-});
-
-server.listen(PORT, '127.0.0.1', () => {
-  console.log(`\n  Sprout is running at http://localhost:${PORT}\n`);
-});
-
-const stopScheduler = startScheduler(db);
-
-const shutdown = async () => {
-  stopScheduler();
-  stopAll();
-  await vite.close();
-  server.close();
-  process.exit(0);
-};
-process.on('SIGINT', shutdown);
-process.on('SIGTERM', shutdown);
+try {
+  const greenhouse = await startGreenhouse({ port: PORT, web: 'vite' });
+  const shutdown = async () => {
+    await greenhouse.stop();
+    process.exit(0);
+  };
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
+} catch (err) {
+  if (!(err instanceof AlreadyRunning)) throw err;
+  console.error(err.message);
+  process.exit(1);
+}

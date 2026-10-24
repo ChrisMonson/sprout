@@ -36,12 +36,12 @@ export default function App() {
   if (sproutMatch) return <SproutView key={sproutMatch[1]} id={sproutMatch[1]} full={!!sproutMatch[2]} feels={state.feels} />;
   const nothingYet = state.sprouts.length === 0 && state.removed.length === 0;
   if (route === '/new' || nothingYet) {
-    return <NewSprout feels={state.feels} credentials={state.credentials} canGoHome={!nothingYet} />;
+    return <NewSprout feels={state.feels} setup={<SetupBanners state={state} onChange={refresh} />} canGoHome={!nothingYet} />;
   }
-  return <Home state={state} />;
+  return <Home state={state} onRefresh={refresh} />;
 }
 
-function Home({ state }: { state: AppState }) {
+function Home({ state, onRefresh }: { state: AppState; onRefresh: () => void }) {
   const statusText = (s: AppState['sprouts'][number]) =>
     s.status === 'planting' ? 'Planting…' : s.status === 'failed' ? "Didn't take root" : s.busy ? 'Growing…' : s.growing ? 'Growing' : 'Resting';
   return (
@@ -51,7 +51,7 @@ function Home({ state }: { state: AppState }) {
           <span className="brand" style={{ fontSize: 20 }}><Leaf size={26} />Sprout</span>
           <button className="btn" onClick={() => go('/new')}>Grow something new</button>
         </div>
-        {state.credentials && !state.credentials.ok && <div className="banner" role="status">{state.credentials.message}</div>}
+        <SetupBanners state={state} onChange={onRefresh} />
         {state.pausedUntil > Date.now() && state.pausedUntil - Date.now() < 7 * 24 * 3600_000 && (
           <div className="banner" role="status">Sprout is resting until {new Date(state.pausedUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} (Claude usage limit). Your tools still work.</div>
         )}
@@ -102,5 +102,33 @@ function RemovedRow({ sprout }: { sprout: AppState['removed'][number] }) {
         </div>
       )}
     </div>
+  );
+}
+
+/** Things Sprout needs before it can grow anything: git, and a Claude sign-in. */
+function SetupBanners({ state, onChange }: { state: AppState; onChange: () => void }) {
+  const [checking, setChecking] = useState(false);
+  const recheck = async () => {
+    setChecking(true);
+    await api.post('/sign-in/check').catch(() => {});
+    setChecking(false);
+    onChange();
+  };
+  const signedOut = state.credentials && !state.credentials.ok;
+  return (
+    <>
+      {state.git === false && (
+        <div className="banner" role="status">
+          Sprout needs Apple’s Command Line Tools to keep track of changes. Open Terminal, run <code>xcode-select --install</code>, then restart Sprout.
+        </div>
+      )}
+      {signedOut && (
+        <div className="banner" role="status" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
+          <span style={{ flex: '1 1 240px' }}>{state.credentials!.message}{state.credentials!.signedOut ? ' A Terminal window will open; type /login there and follow the steps.' : ''}</span>
+          {state.credentials!.signedOut && <button className="btn small" onClick={() => api.post('/sign-in')}>Sign in</button>}
+          <button className="btn quiet small" onClick={recheck} disabled={checking}>{checking ? 'Checking…' : 'I’ve signed in'}</button>
+        </div>
+      )}
+    </>
   );
 }

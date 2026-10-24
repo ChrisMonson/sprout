@@ -7,12 +7,12 @@ import { promisify } from 'node:util';
 import { mkdtempSync, readFileSync, readdirSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { chromium } from 'playwright';
 import { paths, sproutPaths } from './paths.ts';
 import { git } from './git.ts';
 import { checkMigrations, type FileChange } from './migrations.ts';
 import { spawnRunner } from './sprouts.ts';
 import { backupDb } from './snapshot.ts';
+import { nodeCommand, platform } from './platform.ts';
 
 const run = promisify(execFile);
 
@@ -45,7 +45,9 @@ export async function runGate(sproutId: string): Promise<GateResult> {
 
   // 2. types
   try {
-    await run(join(paths.nodeModules, '.bin', 'tsc'), ['-p', p.work, '--noEmit'], { cwd: p.work, timeout: 120_000, maxBuffer: 8 * 1024 * 1024 });
+    const node = nodeCommand();
+    await run(node.cmd, [join(paths.nodeModules, 'typescript', 'bin', 'tsc'), '-p', p.work, '--noEmit'],
+      { cwd: p.work, env: { ...process.env, ...node.env }, timeout: 120_000, maxBuffer: 8 * 1024 * 1024 });
     step('Types check', true);
   } catch (err) {
     const e = err as { stdout?: string; stderr?: string; message: string };
@@ -56,8 +58,9 @@ export async function runGate(sproutId: string): Promise<GateResult> {
   // 3. it builds
   const out = mkdtempSync(join(tmpdir(), 'sprout-build-'));
   try {
-    await run(process.execPath, ['--no-warnings', join(paths.runtime, 'runner.mjs'), '--root', p.work, '--build', out, '--cache', join(p.cache, 'build')],
-      { cwd: paths.home, timeout: 120_000, maxBuffer: 8 * 1024 * 1024 });
+    const node = nodeCommand();
+    await run(node.cmd, ['--no-warnings', join(paths.runtime, 'runner.mjs'), '--root', p.work, '--build', out, '--cache', join(p.cache, 'build')],
+      { cwd: paths.home, env: { ...process.env, ...node.env }, timeout: 120_000, maxBuffer: 8 * 1024 * 1024 });
     step('Builds', true);
   } catch (err) {
     const e = err as { stdout?: string; stderr?: string; message: string };
@@ -80,40 +83,15 @@ async function smokeTest(sproutId: string): Promise<{ ok: boolean; detail: strin
   await backupDb(p.db, db);
   const runner = await spawnRunner({ root: p.work, db, cache: join(p.cache, 'smoke'), sproutId });
   const problems: string[] = [];
-  const browser = await chromium.launch();
   try {
     await runner.ready;
     const base = `http://127.0.0.1:${runner.port}`;
-    const page = await browser.newPage();
-    page.on('console', msg => {
-      // Fonts come from Google; being offline is not the change's fault.
-      const where = msg.location().url ?? '';
-      if (msg.type() === 'error' && !/fonts\.(googleapis|gstatic)\.com/.test(where + msg.text())) problems.push(`Console error: ${msg.text().slice(0, 300)}`);
-    });
-    page.on('pageerror', err => problems.push(`Page crashed: ${err.message.slice(0, 300)}`));
-    page.on('response', res => {
-      if (res.url().startsWith(`${base}/api`) && res.status() >= 500) problems.push(`${res.request().method()} ${res.url().slice(base.length)} returned ${res.status()}`);
-    });
-
-    const health = await page.request.get(`${base}/api/health`);
-    if (health.status() !== 200) problems.push(`/api/health returned ${health.status()}`);
-
-    await page.goto(base, { waitUntil: 'networkidle', timeout: 30_000 });
-    await page.waitForTimeout(800);
-    const rendered = await page.evaluate(() => (document.getElementById('root')?.childElementCount ?? 0) > 0);
-    if (!rendered) problems.push('The page rendered nothing.');
-
-    const links = await page.evaluate(() => [...new Set([...document.querySelectorAll('a[href]')]
-      .map(a => a.getAttribute('href')!)
-      .filter(h => h.startsWith('/') || h.startsWith('#')))].slice(0, 5));
-    for (const href of links) {
-      await page.goto(href.startsWith('#') ? `${base}/${href}` : `${base}${href}`, { waitUntil: 'networkidle', timeout: 15_000 });
-      await page.waitForTimeout(300);
-    }
+    const health = await fetch(`${base}/api/health`).catch(() => null);
+    if (health?.status !== 200) problems.push(`/api/health returned ${health?.status ?? 'nothing'}`);
+    problems.push(...await platform().browserCheck(`${base}/`));
   } catch (err) {
     problems.push((err as Error).message.split('\n')[0]);
   } finally {
-    await browser.close();
     runner.proc.kill('SIGTERM');
     rmSync(scratch, { recursive: true, force: true });
   }
