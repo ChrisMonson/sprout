@@ -68,6 +68,7 @@ export default function App() {
   }, []);
   useEffect(refresh, [refresh]);
   useStream(msg => { if (msg.type === 'sprout' || msg.type === 'turn') refresh(); });
+  useAppearance(state?.appearance ?? 'system');
 
   if (!state) return <div className="app" />;
   return <><DragStrip route={route} /><Page route={route} state={state} refresh={refresh} /></>;
@@ -397,4 +398,19 @@ function useTrayOrder(source: Summary[], onSaved: () => void) {
   useEffect(() => { if (order && !dragId && source.map(s => s.id).join() === order.join()) setOrder(null); }, [source, order, dragId]);
 
   return { sprouts, tray, drag, moveBy };
+}
+
+/** Light or dark for the greenhouse's own screens; "system" follows macOS as it changes. */
+function useAppearance(appearance: 'system' | 'light' | 'dark') {
+  useEffect(() => {
+    const media = matchMedia('(prefers-color-scheme: dark)');
+    const apply = () => {
+      const dark = appearance === 'dark' || (appearance === 'system' && media.matches);
+      document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+      try { localStorage.setItem('sprout-theme', dark ? 'dark' : 'light'); } catch { /* fine without it */ }
+    };
+    apply();
+    media.addEventListener('change', apply);
+    return () => media.removeEventListener('change', apply);
+  }, [appearance]);
 }

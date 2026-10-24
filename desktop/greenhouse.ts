@@ -19,6 +19,9 @@ setPlatform({
   notify(notice) {
     send({ type: 'notify', notice });
   },
+  setAppearance(appearance) {
+    send({ type: 'appearance', appearance });
+  },
   browserCheck(url) {
     return new Promise(resolve => {
       const id = ++nextCheck;

@@ -6,7 +6,8 @@ export type FromGreenhouse =
   | { type: 'ready'; port: number }
   | { type: 'fatal'; message: string; alreadyRunning: boolean }
   | { type: 'notify'; notice: Notice }
-  | { type: 'browser-check'; id: number; url: string };
+  | { type: 'browser-check'; id: number; url: string }
+  | { type: 'appearance'; appearance: 'system' | 'light' | 'dark' };
 
 export type ToGreenhouse =
   | { type: 'browser-check-result'; id: number; problems: string[] }

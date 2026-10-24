@@ -3,7 +3,7 @@
 // (desktop/greenhouse.ts). Closing the window hides it: the greenhouse keeps
 // growing sprouts and sending reminders until you quit from the menu bar.
 
-import { app, BrowserWindow, Menu, Notification, Tray, dialog, nativeImage, session, shell, utilityProcess, type UtilityProcess } from 'electron';
+import { app, BrowserWindow, Menu, Notification, Tray, dialog, nativeImage, nativeTheme, session, shell, utilityProcess, type UtilityProcess } from 'electron';
 import { createServer } from 'node:net';
 import { createWriteStream, mkdirSync, readFileSync, watch } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -140,6 +140,11 @@ async function onMessage(msg: FromGreenhouse) {
     case 'notify':
       showNotice(msg.notice);
       break;
+    case 'appearance':
+      // Native menus, dialogs and the window follow Greenhouse Settings.
+      nativeTheme.themeSource = msg.appearance;
+      win?.setBackgroundColor(nativeTheme.shouldUseDarkColors ? '#121513' : '#F7F8F6');
+      break;
     case 'browser-check':
       send({ type: 'browser-check-result', id: msg.id, problems: await browserCheck(msg.url) });
       break;
@@ -157,7 +162,7 @@ function showWindow(route = '') {
   if (!win) {
     win = new BrowserWindow({
       width: 1200, height: 820, minWidth: 720, minHeight: 520,
-      title: 'Sprout', backgroundColor: '#F7F8F6', show: false,
+      title: 'Sprout', backgroundColor: nativeTheme.shouldUseDarkColors ? '#121513' : '#F7F8F6', show: false,
       // No title bar: the page runs to the top and the window buttons sit on
       // it. The page marks where the window can be dragged (see .desktop in styles.css).
       titleBarStyle: 'hidden',

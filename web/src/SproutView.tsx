@@ -119,7 +119,7 @@ export default function SproutView({ id, full, summary }: { id: string; full: bo
       ) : (
       <header className="topbar">
         <a className="brand back" href="#/" aria-label="Back to your sprouts" title="Back to your sprouts"><ChevronLeft /><Leaf />Sprout</a>
-        <span aria-hidden="true" style={{ color: '#AEB9B1' }}>/</span>
+        <span aria-hidden="true" style={{ color: 'var(--gh-dot-idle)' }}>/</span>
         <span style={{ fontWeight: 600, viewTransitionName: `sprout-name-${id}` }}>{sprout.name || 'Your tool'}</span>
         <span className="status" role="status">
           <i className={sprout.busy ? 'busy' : sprout.growing ? 'on' : ''} />
@@ -340,7 +340,7 @@ function HistoryDrawer({ detail, onClose, onRewind, onCancelNotification }: {
     <aside className="drawer" aria-label="History">
       <header>
         <h2>History</h2>
-        <button className="icon-btn" aria-label="Close history" style={{ background: '#F0F3F0', width: 40, height: 40 }} onClick={onClose}><Close size={16} /></button>
+        <button className="icon-btn" aria-label="Close history" style={{ background: 'var(--gh-hover)', width: 40, height: 40 }} onClick={onClose}><Close size={16} /></button>
       </header>
       {detail.notifications.length > 0 && (
         <section>
@@ -449,7 +449,7 @@ function SettingsDrawer({ id, name, seed, onSaved, onClose }: { id: string; name
     <aside className="drawer" aria-label="Settings">
       <header>
         <h2>Settings</h2>
-        <button className="icon-btn" aria-label="Close settings" style={{ background: '#F0F3F0', width: 40, height: 40 }} onClick={onClose}><Close size={16} /></button>
+        <button className="icon-btn" aria-label="Close settings" style={{ background: 'var(--gh-hover)', width: 40, height: 40 }} onClick={onClose}><Close size={16} /></button>
       </header>
       <DetailsEditor id={id} name={name} seed={seed} onSaved={onSaved} />
       <section>

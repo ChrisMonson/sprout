@@ -37,6 +37,14 @@ describe('greenhouse settings', () => {
     expect(updateSettings(db, { concurrency: 0 }).concurrency).toBe(1);
   });
 
+  it('follows the system appearance by default, and accepts only system, light or dark', () => {
+    const db = openDb(':memory:');
+    expect(getSettings(db).appearance).toBe('system');
+    expect(updateSettings(db, { appearance: 'dark' }).appearance).toBe('dark');
+    expect(() => updateSettings(db, { appearance: 'purple' as 'dark' })).toThrow();
+    expect(getSettings(db).appearance).toBe('dark');
+  });
+
   it('refuses an empty model', () => {
     expect(() => updateSettings(openDb(':memory:'), { models: { plant: { model: ' ' } } })).toThrow();
   });

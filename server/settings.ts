@@ -11,7 +11,12 @@ export const STEPS: Step[] = ['questions', 'plant', 'grow', 'observe'];
 
 export interface StepModel { model: string; effort: string | null }
 
+export type Appearance = 'system' | 'light' | 'dark';
+export const APPEARANCES: Appearance[] = ['system', 'light', 'dark'];
+
 export interface Settings {
+  /** The greenhouse's own screens; each sprout keeps the feel it was planted with. */
+  appearance: Appearance;
   claude: { enabled: boolean };
   models: Record<Step, StepModel>;
   concurrency: number;
@@ -37,6 +42,7 @@ export const PRESETS: Record<string, { label: string; blurb: string; models: Rec
 };
 
 export const DEFAULTS: Settings = {
+  appearance: 'system',
   claude: { enabled: true },
   models: PRESETS.balanced.models,
   concurrency: Number(process.env.SPROUT_CONCURRENCY ?? 1),
@@ -52,6 +58,7 @@ export function getSettings(db: Db): Settings {
   const row = db.prepare("SELECT value FROM settings WHERE key = 'greenhouse'").get() as { value: string } | undefined;
   const saved = row ? JSON.parse(row.value) as Partial<Settings> : {};
   cache = {
+    appearance: APPEARANCES.includes(saved.appearance as Appearance) ? saved.appearance as Appearance : DEFAULTS.appearance,
     claude: { ...DEFAULTS.claude, ...saved.claude },
     models: Object.fromEntries(STEPS.map(s => [s, { ...DEFAULTS.models[s], ...saved.models?.[s] }])) as Record<Step, StepModel>,
     concurrency: saved.concurrency ?? DEFAULTS.concurrency,
@@ -59,9 +66,11 @@ export function getSettings(db: Db): Settings {
   return cache;
 }
 
-export function updateSettings(db: Db, patch: { claude?: Partial<Settings['claude']>; models?: Partial<Record<Step, Partial<StepModel>>>; concurrency?: number }): Settings {
+export function updateSettings(db: Db, patch: { appearance?: Appearance; claude?: Partial<Settings['claude']>; models?: Partial<Record<Step, Partial<StepModel>>>; concurrency?: number }): Settings {
   const current = getSettings(db);
+  if (patch.appearance !== undefined && !APPEARANCES.includes(patch.appearance)) throw new Error('Appearance must be system, light or dark.');
   const next: Settings = {
+    appearance: patch.appearance ?? current.appearance,
     claude: { ...current.claude, ...patch.claude },
     models: Object.fromEntries(STEPS.map(s => [s, { ...current.models[s], ...patch.models?.[s] }])) as Record<Step, StepModel>,
     concurrency: Math.min(4, Math.max(1, Math.round(patch.concurrency ?? current.concurrency))),

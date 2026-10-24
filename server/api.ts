@@ -10,6 +10,7 @@ import { plant, isBusy, pausedUntil } from './scheduler.ts';
 import { rewind } from './apply.ts';
 import { removeSprout, restoreSprout, deleteForever, listRemoved } from './remove.ts';
 import { exportSprout, importSprout } from './transfer.ts';
+import { platform } from './platform.ts';
 import { addNote } from './memory.ts';
 import { getSettings, updateSettings, claudeEnabled, PRESETS, STEPS } from './settings.ts';
 import { listModels, knownModels, resolveStep } from './agent/models.ts';
@@ -61,6 +62,7 @@ export function createApi(db: Db, host: Host) {
     const wasEnabled = claudeEnabled(db);
     try { updateSettings(db, patch); } catch (err) { throw new HttpError(400, (err as Error).message); }
     if (claudeEnabled(db) !== wasEnabled) await host.recheck();
+    if (patch?.appearance) platform().setAppearance?.(getSettings(db).appearance);
     bus.send({ type: 'sprout', sproutId: '' });
     return c.json(await settingsView());
   });
@@ -70,6 +72,7 @@ export function createApi(db: Db, host: Host) {
   };
 
   app.get('/state', c => c.json({
+    appearance: getSettings(db).appearance,
     claudeEnabled: claudeEnabled(db),
     credentials: host.credentials(),
     git: host.git,

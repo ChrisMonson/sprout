@@ -15,7 +15,8 @@ import { stopAll } from './sprouts.ts';
 import { acquireLock, releaseLock } from './lock.ts';
 import { checkCredentials, openSignIn, type CredentialStatus } from './agent/credentials.ts';
 import { listModels } from './agent/models.ts';
-import { claudeEnabled } from './settings.ts';
+import { claudeEnabled, getSettings } from './settings.ts';
+import { platform } from './platform.ts';
 
 export interface GreenhouseOptions {
   port: number;
@@ -39,6 +40,7 @@ export async function startGreenhouse(options: GreenhouseOptions): Promise<Green
   const git = await hasGit();
   if (!git) log('git is missing: install Apple’s Command Line Tools with `xcode-select --install`.');
   const db = openDb(paths.db);
+  platform().setAppearance?.(getSettings(db).appearance);
 
   // Turns cut off by a stop or crash can't resume: close them out, and put
   // anything they had picked up back in the queue. A sprout left mid-plant fails.

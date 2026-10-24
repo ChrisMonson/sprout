@@ -13,6 +13,8 @@ export interface Platform {
   notify(notice: Notice): void;
   /** Load a page in a real browser and report what went wrong (empty = fine). */
   browserCheck(url: string): Promise<string[]>;
+  /** Match native menus, dialogs and the window to the chosen appearance (desktop app only). */
+  setAppearance?(appearance: 'system' | 'light' | 'dark'): void;
 }
 
 let current: Platform | null = null;

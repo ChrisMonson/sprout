@@ -6,7 +6,7 @@ type Step = 'questions' | 'plant' | 'grow' | 'observe';
 interface StepModel { model: string; effort: string | null }
 interface ModelChoice { value: string; displayName: string; description: string; resolvedModel: string; followsLatest: boolean; efforts: string[] }
 interface View {
-  settings: { claude: { enabled: boolean }; models: Record<Step, StepModel>; concurrency: number };
+  settings: { appearance: 'system' | 'light' | 'dark'; claude: { enabled: boolean }; models: Record<Step, StepModel>; concurrency: number };
   presets: Record<string, { label: string; blurb: string; models: Record<Step, StepModel> }>;
   models: ModelChoice[];
   modelsError: string;
@@ -64,6 +64,22 @@ export default function SettingsPage({ state, onChange }: { state: AppState; onC
           <a className="brand back" href="#/" aria-label="Back to your sprouts" title="Back to your sprouts"><ChevronLeft /><Leaf />Sprout</a>
         </div>
         <h1 className="title-l">Settings</h1>
+
+        <section className="settings-card">
+          <div className="settings-row">
+            <div>
+              <h2>Appearance</h2>
+              <p className="muted">For Sprout’s own screens. Each sprout keeps the look it was planted with.</p>
+            </div>
+            <div className="segmented" role="radiogroup" aria-label="Appearance">
+              {(['system', 'light', 'dark'] as const).map(value => (
+                <button key={value} role="radio" aria-checked={settings.appearance === value} disabled={busy} onClick={() => save({ appearance: value })}>
+                  {value === 'system' ? 'System' : value === 'light' ? 'Light' : 'Dark'}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
 
         <section className="settings-card">
           <div className="settings-row">
