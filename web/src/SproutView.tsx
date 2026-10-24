@@ -113,7 +113,9 @@ export default function SproutView({ id, full, summary }: { id: string; full: bo
   return (
     <div className={full ? 'app full' : 'app'} style={{ height: '100%' }}>
       {full ? (
-        <button className="exit-full" onClick={exitFull} aria-label="Show Sprout" title="Show Sprout"><Shrink /></button>
+        <div className="full-bar">
+          <button className="exit-full" onClick={exitFull} aria-label="Show Sprout" title="Show Sprout"><Shrink /></button>
+        </div>
       ) : (
       <header className="topbar">
         <a className="brand back" href="#/" aria-label="Back to your sprouts" title="Back to your sprouts"><ChevronLeft /><Leaf />Sprout</a>

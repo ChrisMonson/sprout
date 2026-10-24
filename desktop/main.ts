@@ -158,6 +158,10 @@ function showWindow(route = '') {
     win = new BrowserWindow({
       width: 1200, height: 820, minWidth: 720, minHeight: 520,
       title: 'Sprout', backgroundColor: '#F7F8F6', show: false,
+      // No title bar: the page runs to the top and the window buttons sit on
+      // it. The page marks where the window can be dragged (see .desktop in styles.css).
+      titleBarStyle: 'hidden',
+      trafficLightPosition: { x: 20, y: 25 }, // centred in the 64px sprout header
     });
     win.webContents.setWindowOpenHandler(({ url }) => {
       void shell.openExternal(url);
@@ -171,6 +175,11 @@ function showWindow(route = '') {
     });
     win.on('closed', () => { win = null; });
     win.once('ready-to-show', () => win?.show());
+    // A sprout filling the window has a slim 38px bar instead of the 64px
+    // header, so the window buttons move up into it there.
+    const placeButtons = (url: string) => win?.setWindowButtonPosition(url.includes('/full') ? { x: 14, y: 12 } : { x: 20, y: 25 });
+    win.webContents.on('did-navigate-in-page', (_event, url) => placeButtons(url));
+    win.webContents.on('did-navigate', (_event, url) => placeButtons(url));
     void win.loadURL(`${base}/${route}`);
   } else {
     if (route) void win.webContents.executeJavaScript(`location.hash = ${JSON.stringify(route)}`);

@@ -70,7 +70,10 @@ export default function App() {
   useStream(msg => { if (msg.type === 'sprout' || msg.type === 'turn') refresh(); });
 
   if (!state) return <div className="app" />;
+  return <><DragStrip route={route} /><Page route={route} state={state} refresh={refresh} /></>;
+}
 
+function Page({ route, state, refresh }: { route: string; state: AppState; refresh: () => void }) {
   const sproutMatch = /^\/s\/([\w-]+)(\/full)?/.exec(route);
   if (sproutMatch) {
     const id = sproutMatch[1];
@@ -82,6 +85,16 @@ export default function App() {
     return <NewSprout feels={state.feels} setup={<SetupBanners state={state} onChange={refresh} />} canGoHome={!nothingYet} claude={state.claudeEnabled !== false} />;
   }
   return <Home state={state} onRefresh={refresh} />;
+}
+
+/**
+ * In the desktop app, a strip along the top of the window to drag it by. A
+ * sprout's own header (or, filling the window, its slim top bar) does this
+ * job, so the strip is left out there; on top of them it would swallow clicks.
+ */
+function DragStrip({ route }: { route: string }) {
+  if (/^\/s\/[\w-]+(\/full)?$/.test(route)) return null;
+  return <div className="drag-strip" aria-hidden="true" />;
 }
 
 /** A seedling while it grows, a seed while it rests. */
