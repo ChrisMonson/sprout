@@ -54,3 +54,18 @@ export const Shrink = () => (
 export const ChevronLeft = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" strokeWidth={2.4} {...base}><path d="M15 6l-6 6 6 6" /></svg>
 );
+
+/** A seedling, for a sprout that is growing. */
+export const Seedling = ({ size = 14 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" strokeWidth={2.2} {...base}>
+    <path d="M12 21v-8" /><path d="M12 13c0-3.5 2.5-6 7-6 0 3.5-2.5 6-7 6z" fill="currentColor" fillOpacity={0.25} /><path d="M12 15c0-2.8-2-4.8-5.5-4.8 0 2.8 2 4.8 5.5 4.8z" fill="currentColor" fillOpacity={0.25} />
+  </svg>
+);
+
+/** A seed, for a sprout that is resting. */
+export const Seed = ({ size = 14 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" strokeWidth={2} {...base}>
+    <ellipse cx="12" cy="13" rx="5" ry="7" transform="rotate(-30 12 13)" fill="currentColor" fillOpacity={0.2} />
+    <path d="M10.5 9.5c1.2 1.8 1.6 4 1.2 6.2" />
+  </svg>
+);

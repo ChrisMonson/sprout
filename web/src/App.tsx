@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, useStream, type AppState } from './api.ts';
-import { Leaf } from './icons.tsx';
+import { Leaf, Seed, Seedling } from './icons.tsx';
 import NewSprout from './NewSprout.tsx';
 import SproutView from './SproutView.tsx';
 
@@ -41,6 +41,22 @@ export default function App() {
   return <Home state={state} onRefresh={refresh} />;
 }
 
+/** A seedling while it grows, a seed while it rests. */
+function statusGlyph(s: AppState['sprouts'][number]) {
+  if (s.status === 'failed') return { icon: <i />, tone: '' };
+  if (s.busy || s.status === 'planting') return { icon: <Seedling />, tone: 'glyph busy' };
+  if (s.growing) return { icon: <Seedling />, tone: 'glyph growing' };
+  return { icon: <Seed />, tone: 'glyph resting' };
+}
+
+const TRAY_COLUMNS = 3;
+
+/** Empty cells to finish the tray's last row, always leaving at least one to plant in. */
+function emptyCells(count: number) {
+  const leftover = (TRAY_COLUMNS - (count % TRAY_COLUMNS)) % TRAY_COLUMNS;
+  return leftover === 0 ? TRAY_COLUMNS : leftover;
+}
+
 function Home({ state, onRefresh }: { state: AppState; onRefresh: () => void }) {
   const statusText = (s: AppState['sprouts'][number]) =>
     s.status === 'planting' ? 'Planting…' : s.status === 'failed' ? "Didn't take root" : s.busy ? 'Growing…' : s.growing ? 'Growing' : 'Resting';
@@ -56,15 +72,19 @@ function Home({ state, onRefresh }: { state: AppState; onRefresh: () => void }) 
           <div className="banner" role="status">Sprout is resting until {new Date(state.pausedUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} (Claude usage limit). Your tools still work.</div>
         )}
         <h1 className="title-l">Your sprouts</h1>
-        <div className="sprout-list">
+        {/* A nod to a seed-starting tray: each sprout sits in a cell, and the
+            row is filled out with empty cells, the first of which plants a new one. */}
+        <div className="sprout-list tray">
           {state.sprouts.map(s => (
             <a key={s.id} className="sprout-card" href={`#/s/${s.id}`}>
               <span className="n">{s.name || 'Unnamed sprout'}</span>
               <span className="s">{s.seed}</span>
-              <span className="status"><i className={s.busy ? 'busy' : s.growing && s.status === 'ready' ? 'on' : ''} />{statusText(s)}</span>
+              <span className={`status ${statusGlyph(s).tone}`}>{statusGlyph(s).icon}{statusText(s)}</span>
             </a>
           ))}
-          {state.sprouts.length === 0 && <p className="muted" style={{ margin: 0 }}>Nothing growing right now.</p>}
+          {Array.from({ length: emptyCells(state.sprouts.length) }, (_, i) => i === 0
+            ? <a key="plant" className="cell-empty plant" href="#/new"><span aria-hidden="true">+</span>Plant something new</a>
+            : <span key={i} className="cell-empty extra" aria-hidden="true" />)}
         </div>
         {state.removed.length > 0 && (
           <section className="removed" aria-labelledby="removed-title">
