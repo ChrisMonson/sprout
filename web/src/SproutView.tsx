@@ -13,6 +13,16 @@ export default function SproutView({ id, full }: { id: string; full: boolean; fe
   const [toast, setToast] = useState<Toast | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  // Cards that float over the tool show briefly, then fold into small pills
+  // so they don't sit on top of it. Clicking a pill opens its card again.
+  const [workingOpen, setWorkingOpen] = useState(false);
+  const [foldedBuds, setFoldedBuds] = useState<number[]>([]);
+  const workingTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const openWorking = (ms = 6000) => {
+    setWorkingOpen(true);
+    clearTimeout(workingTimer.current);
+    workingTimer.current = setTimeout(() => setWorkingOpen(false), ms);
+  };
 
   // The tool can fill the browser window with Sprout's own UI hidden. It is a
   // route (#/s/<id>/full) so it can be bookmarked.
@@ -45,12 +55,22 @@ export default function SproutView({ id, full }: { id: string; full: boolean; fe
     if (msg.type === 'sprout') refresh();
     if (msg.type === 'progress') setLines(l => [...l, msg.line].slice(-12));
     if (msg.type === 'turn') {
-      if (msg.status === 'running') setLines([]);
+      if (msg.status === 'running') { setLines([]); openWorking(); }
       refresh();
     }
     if (msg.type === 'toast') showToast({ text: msg.text, undoGrowthId: msg.undoGrowthId });
     if (msg.type === 'notification') showToast({ text: msg.body ? `${msg.title}: ${msg.body}` : msg.title });
   });
+
+  const bud = detail?.buds[0];
+  const busy = !!detail?.sprout.busy;
+  useEffect(() => {
+    // A new suggestion or question folds itself away after it has been on
+    // screen for a while (it stays hidden while the agent is working).
+    if (!bud || busy) return;
+    const t = setTimeout(() => setFoldedBuds(f => f.includes(bud.id) ? f : [...f, bud.id]), 15_000);
+    return () => clearTimeout(t);
+  }, [bud?.id, busy]);
 
   if (!detail) return <div className="app" />;
   const { sprout } = detail;
@@ -112,16 +132,33 @@ export default function SproutView({ id, full }: { id: string; full: boolean; fe
           ? <ToolFrame id={id} url={url} name={sprout.name} growing={sprout.growing} full={full} onSent={text => showToast({ text })} />
           : <p className="error" role="alert">{startError}</p>}
 
-        {sprout.busy && (
+        {sprout.busy && workingOpen && (
           <aside className="card-float working" aria-live="polite">
             <span className="pulse-dot" aria-hidden="true" />
-            <span style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
               <span style={{ fontWeight: 600 }}>{lines.at(-1) ?? 'Thinking about what you said…'}</span>
               <span className="muted" style={{ fontSize: 14 }}>Keep using it. Nothing will move while you’re in the middle of something.</span>
             </span>
+            <button className="fold" aria-label="Hide" title="Hide" onClick={() => { clearTimeout(workingTimer.current); setWorkingOpen(false); }}><Close size={12} /></button>
           </aside>
         )}
-        {!sprout.busy && detail.buds.slice(0, 1).map(b => <BudCard key={b.id} id={id} bud={b} onDone={refresh} />)}
+        {!sprout.busy && bud && !foldedBuds.includes(bud.id) && (
+          <BudCard key={bud.id} id={id} bud={bud} onDone={refresh} onFold={() => setFoldedBuds(f => [...f, bud.id])} />
+        )}
+        <div className="pills">
+          {sprout.busy && !workingOpen && (
+            <button className="pill" onClick={() => openWorking(15_000)} title="What Sprout is doing">
+              <span className="pulse-dot small" aria-hidden="true" />
+              <span className="pill-text">{lines.at(-1) ?? 'Working…'}</span>
+            </button>
+          )}
+          {!sprout.busy && bud && foldedBuds.includes(bud.id) && (
+            <button className="pill" onClick={() => setFoldedBuds(f => f.filter(x => x !== bud.id))}>
+              {bud.kind === 'question' ? <Leaf size={14} /> : <BudIcon size={14} />}
+              <span className="pill-text">{bud.kind === 'question' ? 'Sprout has a question' : 'Sprout has an idea'}</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {toast && (
@@ -238,7 +275,7 @@ function ToolFrame({ id, url, name, growing, full, onSent }: { id: string; url: 
   );
 }
 
-function BudCard({ id, bud, onDone }: { id: string; bud: Bud; onDone: () => void }) {
+function BudCard({ id, bud, onDone, onFold }: { id: string; bud: Bud; onDone: () => void; onFold: () => void }) {
   const [answer, setAnswer] = useState('');
   const act = async (action: 'accept' | 'dismiss' | 'answer', value?: string) => {
     await api.post(`/sprouts/${id}/buds/${bud.id}`, { action, answer: value }).catch(() => {});
@@ -247,7 +284,7 @@ function BudCard({ id, bud, onDone }: { id: string; bud: Bud; onDone: () => void
   if (bud.kind === 'question') {
     return (
       <aside className="card-float" aria-label="A question from Sprout">
-        <span className="kicker"><Leaf size={16} />A question</span>
+        <span className="kicker"><Leaf size={16} />A question<button className="fold" aria-label="Hide for now" title="Hide for now" onClick={onFold}><Close size={12} /></button></span>
         <p>{bud.text}</p>
         {bud.suggestions?.length ? <div className="actions">{bud.suggestions.map(s => <button key={s} className="btn quiet small" onClick={() => act('answer', s)}>{s}</button>)}</div> : null}
         <div className="composer">
@@ -260,7 +297,7 @@ function BudCard({ id, bud, onDone }: { id: string; bud: Bud; onDone: () => void
   }
   return (
     <aside className="card-float" aria-label="A suggestion from Sprout">
-      <span className="kicker"><BudIcon />A bud</span>
+      <span className="kicker"><BudIcon />A bud<button className="fold" aria-label="Hide for now" title="Hide for now" onClick={onFold}><Close size={12} /></button></span>
       <p>{bud.text}</p>
       <div className="actions">
         <button className="btn small" onClick={() => act('accept')}>Grow it</button>

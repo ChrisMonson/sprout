@@ -25,7 +25,10 @@ await ensureRuntime();
 await ensureBrowser();
 const db = openDb(paths.db);
 
-// A sprout left mid-plant by a crash can't resume.
+// Turns cut off by a stop or crash can't resume: close them out, and put
+// anything they had picked up back in the queue. A sprout left mid-plant fails.
+db.prepare("UPDATE turns SET status = 'interrupted', ended_at = ? WHERE status = 'running'").run(Date.now());
+db.prepare("UPDATE whispers SET status = 'new' WHERE status = 'taken'").run();
 db.prepare("UPDATE sprouts SET status = 'failed' WHERE status = 'planting'").run();
 
 let credentials: CredentialStatus | null = null;
