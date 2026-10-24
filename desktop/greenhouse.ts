@@ -44,7 +44,9 @@ parent.on('message', async ({ data }: { data: ToGreenhouse }) => {
 });
 
 try {
-  greenhouse = await startGreenhouse({ port: Number(process.env.SPROUT_PORT), web: { staticDir: paths.webDist } });
+  // In desktop dev mode the UI is served by Vite, so edits to web/ hot-reload in the window.
+  const web = process.env.SPROUT_DEV ? 'vite' : { staticDir: paths.webDist };
+  greenhouse = await startGreenhouse({ port: Number(process.env.SPROUT_PORT), web });
   send({ type: 'ready', port: greenhouse.port });
 } catch (err) {
   send({ type: 'fatal', message: (err as Error).message, alreadyRunning: err instanceof AlreadyRunning });

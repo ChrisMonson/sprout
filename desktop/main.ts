@@ -5,7 +5,8 @@
 
 import { app, BrowserWindow, Menu, Notification, Tray, dialog, nativeImage, shell, utilityProcess, type UtilityProcess } from 'electron';
 import { createServer } from 'node:net';
-import { createWriteStream, mkdirSync } from 'node:fs';
+import { createWriteStream, mkdirSync, readFileSync, watch } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { browserCheck } from './browser-check.ts';
@@ -23,6 +24,14 @@ let tray: Tray | null = null;
 let quitting = false;
 const notices = new Set<Notification>();
 
+// The dev app (npm run desktop:dev) is its own app, so it never hands off to
+// an installed Sprout. If both use the same Sprout folder, the greenhouse lock
+// says so.
+if (!app.isPackaged) {
+  app.setName('Sprout Dev');
+  app.setPath('userData', join(app.getPath('appData'), 'Sprout Dev'));
+}
+
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
@@ -30,31 +39,88 @@ if (!app.requestSingleInstanceLock()) {
   app.whenReady().then(start);
 }
 
-async function start() {
-  const port = await freePort(Number(process.env.SPROUT_PORT ?? 4100));
-  mkdirSync(home, { recursive: true });
-  const log = createWriteStream(join(home, 'greenhouse.log'), { flags: 'a' });
+let port = 0;
+let restarting = false;
+const dev = !app.isPackaged && !!process.env.SPROUT_DEV;
 
-  greenhouse = utilityProcess.fork(join(import.meta.dirname, 'greenhouse.mjs'), [], {
+async function start() {
+  port = await freePort(Number(process.env.SPROUT_PORT ?? 4100));
+  mkdirSync(home, { recursive: true });
+  spawnGreenhouse();
+  if (dev) watchGreenhouse();
+}
+
+function spawnGreenhouse() {
+  const log = createWriteStream(join(home, 'greenhouse.log'), { flags: 'a' });
+  const child = utilityProcess.fork(join(import.meta.dirname, 'greenhouse.mjs'), [], {
     serviceName: 'Sprout Greenhouse',
     stdio: 'pipe',
     env: { ...process.env, SPROUT_RESOURCES: resources, SPROUT_PORT: String(port), SPROUT_HOME: home },
   });
-  greenhouse.stdout?.on('data', chunk => { log.write(chunk); process.stdout.write(chunk); });
-  greenhouse.stderr?.on('data', chunk => { log.write(chunk); process.stderr.write(chunk); });
-  greenhouse.on('message', (msg: FromGreenhouse) => void onMessage(msg));
-  greenhouse.on('exit', code => {
-    greenhouse = null;
-    if (quitting) return;
+  greenhouse = child;
+  child.stdout?.on('data', chunk => { log.write(chunk); process.stdout.write(chunk); });
+  child.stderr?.on('data', chunk => { log.write(chunk); process.stderr.write(chunk); });
+  child.on('message', (msg: FromGreenhouse) => void onMessage(msg));
+  child.on('exit', code => {
+    if (greenhouse === child) greenhouse = null;
+    if (quitting || restarting) return;
     dialog.showErrorBox('Sprout stopped', `The greenhouse stopped unexpectedly (code ${code}). Details are in ${join(home, 'greenhouse.log')}.`);
     app.exit(1);
   });
+}
+
+/**
+ * Desktop dev mode: when the greenhouse bundle is rebuilt (npm run desktop:dev
+ * watches server/ and desktop/), restart just the greenhouse. The window stays
+ * open and reloads once the new one is ready. Changes to this file (the main
+ * process) still need the app relaunched.
+ */
+function watchGreenhouse() {
+  // Rebuilds can rewrite a bundle without changing it; only react to real changes.
+  const onChange = (file: string, then: () => void) => {
+    let last = digest(file);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    watch(file, () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        const now = digest(file);
+        if (now && now !== last) { last = now; then(); }
+      }, 300);
+    });
+  };
+  onChange(join(import.meta.dirname, 'greenhouse.mjs'), () => void restartGreenhouse());
+  onChange(join(import.meta.dirname, 'main.mjs'), () => console.log('[dev] The app shell changed: quit and run npm run desktop:dev again to use it.'));
+}
+
+function digest(file: string): string {
+  try { return createHash('sha1').update(readFileSync(file)).digest('hex'); } catch { return ''; }
+}
+
+async function restartGreenhouse() {
+  if (restarting || quitting) return;
+  restarting = true;
+  console.log('[dev] Server code changed: restarting the greenhouse…');
+  const old = greenhouse;
+  if (old) {
+    await new Promise<void>(resolve => {
+      old.once('exit', () => resolve());
+      send({ type: 'stop' });
+      setTimeout(() => { old.kill(); resolve(); }, 8_000);
+    });
+  }
+  spawnGreenhouse();
 }
 
 async function onMessage(msg: FromGreenhouse) {
   switch (msg.type) {
     case 'ready':
       base = `http://127.0.0.1:${msg.port}`;
+      if (restarting) {
+        restarting = false;
+        win?.webContents.reload();
+        console.log('[dev] Greenhouse restarted.');
+        break;
+      }
       createTray();
       if (!app.getLoginItemSettings().wasOpenedAtLogin) showWindow();
       break;

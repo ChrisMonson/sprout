@@ -16,7 +16,8 @@
     "build:runtime": "node scripts/build-runtime.mjs",
     "build:icons": "electron scripts/make-icons.mjs",
     "desktop": "npm run build && electron .",
-    "package": "npm run build && npm run build:runtime && electron-builder --mac --arm64"
+    "package": "npm run build && npm run build:runtime && electron-builder --mac --arm64",
+    "desktop:dev": "node scripts/dev-desktop.mjs"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "0.3.310",

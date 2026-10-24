@@ -39,7 +39,12 @@ How the app behaves:
 - Only one greenhouse runs per Sprout folder, so `npm run dev` refuses to start while the app is open, and the other way round.
 - The build is ad-hoc signed for your own Mac. Sharing it needs Developer ID signing and notarization (not set up yet).
 
-For development, `npm run desktop` builds and runs the app without packaging it. `npx electron dist/desktop/selftest.mjs` runs the gate's pass/fail scenarios inside Electron.
+For development, `npm run desktop:dev` runs the app unpackaged, as **Sprout Dev** (its own name, icon and identity), against your real `~/Sprout`. Quit the installed Sprout first, since only one greenhouse can run per folder; Sprout Dev tells you if one already is.
+- edits to `web/` hot-reload in the window
+- edits to `server/` rebuild automatically and restart the greenhouse in a second or two, window open (an agent turn in progress starts over)
+- edits to `desktop/main.ts` (window, menu bar, notifications) need a relaunch
+
+`npm run desktop` builds once and runs it the way the packaged app does. `npx electron dist/desktop/selftest.mjs` runs the gate's pass/fail scenarios inside Electron.
 
 Settings (environment variables):
 - `SPROUT_HOME`: where sprouts live (default `~/Sprout`)

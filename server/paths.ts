@@ -24,7 +24,7 @@ export const paths = {
   runtimeSource: join(RESOURCES, 'runtime'),
   /** Dependencies installed at build time, shipped inside the app. */
   prebuiltModules: join(RESOURCES, 'build', 'runtime', 'node_modules'),
-  web: join(REPO, 'web'),
+  web: join(RESOURCES, 'web'),
   webDist: join(RESOURCES, 'dist', 'web'),
 };
 
