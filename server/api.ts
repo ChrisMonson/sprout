@@ -9,6 +9,7 @@ import type { CredentialStatus } from './agent/credentials.ts';
 import { plant, isBusy, pausedUntil } from './scheduler.ts';
 import { rewind } from './apply.ts';
 import { removeSprout, restoreSprout, deleteForever, listRemoved } from './remove.ts';
+import { exportSprout, importSprout } from './transfer.ts';
 import { schedule, cancel, cancelById, upcoming, type NotificationRequest } from './notifications.ts';
 
 const EVENT_KINDS = new Set(['click', 'input', 'submit', 'nav', 'rage', 'error', 'console_error', 'api_error']);
@@ -204,6 +205,30 @@ export function createApi(db: Db, host: Host) {
     q.update(db, row.id, { growing: on ? 1 : 0 });
     bus.send({ type: 'sprout', sproutId: row.id });
     return c.json({ ok: true });
+  });
+
+  app.get('/sprouts/:id/export', async c => {
+    const row = sproutOr404(c.req.param('id'));
+    try {
+      const { filename, bytes } = await exportSprout(db, row.id, c.req.query('data') !== '0');
+      return new Response(new Uint8Array(bytes), {
+        headers: { 'content-type': 'application/octet-stream', 'content-disposition': `attachment; filename="${filename}"` },
+      });
+    } catch (err) {
+      throw new HttpError(409, (err as Error).message);
+    }
+  });
+
+  app.post('/import', async c => {
+    const bytes = Buffer.from(await c.req.arrayBuffer());
+    if (!bytes.length) throw new HttpError(400, 'Choose a .sprout file to import.');
+    try {
+      const id = await importSprout(db, bytes);
+      bus.send({ type: 'sprout', sproutId: id });
+      return c.json({ id });
+    } catch (err) {
+      throw new HttpError(400, (err as Error).message);
+    }
   });
 
   app.post('/sprouts/:id/remove', c => {

@@ -4,6 +4,8 @@ Grow tools that build, maintain, and improve themselves.
 
 You describe a tool you wish you had ("What do you want to grow?"). Sprout asks a few follow-up questions and asks how it should feel. Then a Claude Code agent builds the first version. After that, the tool keeps getting better as you use it. The agent learns from the errors it sees, from how you use the tool, and from things you point at and say ("whispers").
 
+**Export** any sprout from its Settings (the cog) as a single `.sprout` file (its code with full history, its agent's memory, and optionally your data), and **Import…** one from the home page. An imported sprout arrives resting, with Growth off.
+
 Growth follows evidence: it happens because you asked for something, said yes to a suggestion, or the tool broke. Ideas you didn't ask for arrive as **buds**, and nothing gets built unless you say yes. Turn **Growth** off and the tool stops changing on its own; it still does what you ask it to.
 
 ## Running it

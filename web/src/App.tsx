@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { api, useStream, type AppState } from './api.ts';
 import { Leaf, Seed, Seedling } from './icons.tsx';
@@ -99,6 +99,7 @@ function emptyCells(count: number) {
 }
 
 function Home({ state, onRefresh }: { state: AppState; onRefresh: () => void }) {
+  const [importError, setImportError] = useState('');
   const statusText = (s: AppState['sprouts'][number]) =>
     s.status === 'planting' ? 'Planting…' : s.status === 'failed' ? "Didn't take root" : s.busy ? 'Growing…' : s.growing ? 'Growing' : 'Resting';
   return (
@@ -106,9 +107,13 @@ function Home({ state, onRefresh }: { state: AppState; onRefresh: () => void }) 
       <main className="home">
         <div className="home-head">
           <span className="brand" style={{ fontSize: 20 }}><Leaf size={26} />Sprout</span>
-          <button className="btn" onClick={() => go('/new')}>Grow something new</button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <ImportSprout onError={setImportError} />
+            <button className="btn" onClick={() => go('/new')}>Grow something new</button>
+          </div>
         </div>
         <SetupBanners state={state} onChange={onRefresh} />
+        {importError && <div className="banner" role="alert">{importError}</div>}
         {state.pausedUntil > Date.now() && state.pausedUntil - Date.now() < 7 * 24 * 3600_000 && (
           <div className="banner" role="status">Sprout is resting until {new Date(state.pausedUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} (Claude usage limit). Your tools still work.</div>
         )}
@@ -191,6 +196,34 @@ function SetupBanners({ state, onChange }: { state: AppState; onChange: () => vo
           <button className="btn quiet small" onClick={recheck} disabled={checking}>{checking ? 'Checking…' : 'I’ve signed in'}</button>
         </div>
       )}
+    </>
+  );
+}
+
+/** Brings in a .sprout file exported from Sprout, as a new (resting) sprout. */
+function ImportSprout({ onError }: { onError: (message: string) => void }) {
+  const input = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const choose = async (file: File | undefined) => {
+    if (!file) return;
+    setBusy(true);
+    onError('');
+    try {
+      const res = await fetch('/api/import', { method: 'POST', headers: { 'content-type': 'application/octet-stream' }, body: file });
+      const body = await res.json() as { id?: string; error?: string };
+      if (!res.ok || !body.id) throw new Error(body.error ?? 'That file couldn’t be imported.');
+      go(`/s/${body.id}`);
+    } catch (err) {
+      onError((err as Error).message);
+    } finally {
+      setBusy(false);
+      if (input.current) input.current.value = '';
+    }
+  };
+  return (
+    <>
+      <input ref={input} type="file" accept=".sprout" className="sr" tabIndex={-1} aria-hidden="true" onChange={e => void choose(e.target.files?.[0])} />
+      <button className="btn quiet" onClick={() => input.current?.click()} disabled={busy}>{busy ? 'Importing…' : 'Import…'}</button>
     </>
   );
 }

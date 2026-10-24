@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, timeOf, useStream, type AppState, type Bud, type SproutDetail, type Target } from './api.ts';
-import { Bud as BudIcon, Check, ChevronLeft, Close, Expand, Grow, History, Leaf, Send, Shrink, Target as TargetIcon } from './icons.tsx';
+import { Bud as BudIcon, Check, ChevronLeft, Close, Cog, Expand, Grow, History, Leaf, Send, Shrink, Target as TargetIcon } from './icons.tsx';
 import { go } from './App.tsx';
 
 interface Toast { text: string; undoGrowthId?: number }
@@ -16,7 +16,9 @@ export default function SproutView({ id, full, summary }: { id: string; full: bo
   const [startError, setStartError] = useState('');
   const [lines, setLines] = useState<string[]>([]);
   const [toast, setToast] = useState<Toast | null>(null);
-  const [historyOpen, setHistoryOpen] = useState(false);
+  // One side drawer at a time: History (what happened) or Settings (what you can do with the sprout).
+  const [drawer, setDrawer] = useState<'history' | 'settings' | null>(null);
+  const toggleDrawer = (which: 'history' | 'settings') => setDrawer(d => d === which ? null : which);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   // Cards that float over the tool show briefly, then fold into small pills
   // so they don't sit on top of it. Clicking a pill opens its card again.
@@ -128,7 +130,8 @@ export default function SproutView({ id, full, summary }: { id: string; full: bo
           }}>
             <span className="track" aria-hidden="true" />Growth
           </button>
-          <button className="pill-btn" aria-expanded={historyOpen} onClick={() => setHistoryOpen(o => !o)}><History />History</button>
+          <button className="pill-btn" aria-expanded={drawer === 'history'} onClick={() => toggleDrawer('history')}><History />History</button>
+          <button className="pill-btn icon-only" aria-expanded={drawer === 'settings'} aria-label="Settings" title="Settings" onClick={() => toggleDrawer('settings')}><Cog /></button>
           <button className="pill-btn" onClick={enterFull} aria-label="Hide Sprout and fill the window" title="Hide Sprout and fill the window"><Expand /></button>
         </div>
       </header>
@@ -175,8 +178,8 @@ export default function SproutView({ id, full, summary }: { id: string; full: bo
         </div>
       )}
 
-      {historyOpen && <HistoryDrawer detail={detail} onClose={() => setHistoryOpen(false)} onRewind={undo}
-        footer={<RemoveSprout id={id} name={sprout.name} />}
+      {drawer === 'settings' && <SettingsDrawer id={id} name={sprout.name} onClose={() => setDrawer(null)} />}
+      {drawer === 'history' && <HistoryDrawer detail={detail} onClose={() => setDrawer(null)} onRewind={undo}
         onCancelNotification={nid => api.post(`/sprouts/${id}/notify/cancel`, { id: nid }).then(refresh).catch(() => {})} />}
     </div>
   );
@@ -321,8 +324,8 @@ function BudCard({ id, bud, onDone, onFold }: { id: string; bud: Bud; onDone: ()
   );
 }
 
-function HistoryDrawer({ detail, onClose, onRewind, onCancelNotification, footer }: {
-  detail: SproutDetail; onClose: () => void; onRewind: (growthId: number) => void; onCancelNotification: (id: number) => void; footer: ReactNode;
+function HistoryDrawer({ detail, onClose, onRewind, onCancelNotification }: {
+  detail: SproutDetail; onClose: () => void; onRewind: (growthId: number) => void; onCancelNotification: (id: number) => void;
 }) {
   const day = (ts: number) => new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric' });
   const whisperStatus: Record<string, string> = {
@@ -378,7 +381,6 @@ function HistoryDrawer({ detail, onClose, onRewind, onCancelNotification, footer
           </div>
         ))}
       </section>
-      <section className="drawer-footer">{footer}</section>
     </aside>
   );
 }
@@ -422,4 +424,39 @@ function wakeReason(turn: SproutDetail['turns'][number] | undefined): string {
   if (reason.includes('rolled back')) return 'Working out what went wrong with the last change…';
   if (reason.includes('error')) return 'Looking into an error…';
   return 'Working on an improvement…';
+}
+
+/** Saves the sprout as a .sprout file someone can import into their own Sprout. */
+function ExportSprout({ id }: { id: string }) {
+  const [withData, setWithData] = useState(true);
+  return (
+    <div className="export">
+      <a className="btn quiet small" href={`/api/sprouts/${id}/export?data=${withData ? 1 : 0}`} download>Export…</a>
+      <label className="check">
+        <input type="checkbox" checked={withData} onChange={e => setWithData(e.target.checked)} />
+        Include my data
+      </label>
+    </div>
+  );
+}
+
+/** What you can do with the sprout itself, as opposed to its history. */
+function SettingsDrawer({ id, name, onClose }: { id: string; name: string; onClose: () => void }) {
+  return (
+    <aside className="drawer" aria-label="Settings">
+      <header>
+        <h2>Settings</h2>
+        <button className="icon-btn" aria-label="Close settings" style={{ background: '#F0F3F0', width: 40, height: 40 }} onClick={onClose}><Close size={16} /></button>
+      </header>
+      <section>
+        <h3>Export</h3>
+        <p className="muted" style={{ margin: 0, fontSize: 14, lineHeight: 1.5 }}>Save {name || 'this sprout'} as a .sprout file: its code and history, what Sprout has learned, and optionally your data. Import it from the home page, here or on another Mac.</p>
+        <ExportSprout id={id} />
+      </section>
+      <section>
+        <h3>Remove</h3>
+        <RemoveSprout id={id} name={name} />
+      </section>
+    </aside>
+  );
 }

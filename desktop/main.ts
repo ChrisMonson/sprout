@@ -3,7 +3,7 @@
 // (desktop/greenhouse.ts). Closing the window hides it: the greenhouse keeps
 // growing sprouts and sending reminders until you quit from the menu bar.
 
-import { app, BrowserWindow, Menu, Notification, Tray, dialog, nativeImage, shell, utilityProcess, type UtilityProcess } from 'electron';
+import { app, BrowserWindow, Menu, Notification, Tray, dialog, nativeImage, session, shell, utilityProcess, type UtilityProcess } from 'electron';
 import { createServer } from 'node:net';
 import { createWriteStream, mkdirSync, readFileSync, watch } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -44,6 +44,14 @@ let restarting = false;
 const dev = !app.isPackaged && !!process.env.SPROUT_DEV;
 
 async function start() {
+  // Exports arrive as downloads: ask where to save them, starting in Downloads.
+  session.defaultSession.on('will-download', (_event, item) => {
+    item.setSaveDialogOptions({
+      title: 'Export sprout',
+      defaultPath: join(app.getPath('downloads'), item.getFilename()),
+      filters: [{ name: 'Sprout', extensions: ['sprout'] }],
+    });
+  });
   port = await freePort(Number(process.env.SPROUT_PORT ?? 4100));
   mkdirSync(home, { recursive: true });
   spawnGreenhouse();
