@@ -50,3 +50,7 @@ export const Expand = () => (
 export const Shrink = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" strokeWidth={2} {...base}><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" /></svg>
 );
+
+export const ChevronLeft = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" strokeWidth={2.4} {...base}><path d="M15 6l-6 6 6 6" /></svg>
+);

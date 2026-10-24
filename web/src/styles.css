@@ -94,6 +94,10 @@ h1 { margin: 0; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; }
 .topbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 10px 20px; border-bottom: 1px solid var(--gh-line); background: var(--gh-surface); }
 .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; text-decoration: none; color: var(--gh-ink); }
 .brand svg { color: var(--gh-green); }
+.brand.back { gap: 6px; margin-left: -8px; padding: 6px 10px 6px 4px; border-radius: 10px; }
+.brand.back svg:first-child { color: var(--gh-muted); transition: transform 0.15s; }
+.brand.back:hover { background: #F0F3F0; }
+.brand.back:hover svg:first-child { transform: translateX(-2px); color: var(--gh-ink); }
 .status { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--gh-muted); }
 .status i { width: 8px; height: 8px; border-radius: 50%; background: #AEB9B1; }
 .status i.on { background: #2F8A55; }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { api, timeOf, useStream, type Bud, type Feel, type SproutDetail, type Target } from './api.ts';
-import { Bud as BudIcon, Check, Close, Expand, Grow, History, Leaf, Send, Shrink, Target as TargetIcon } from './icons.tsx';
+import { Bud as BudIcon, Check, ChevronLeft, Close, Expand, Grow, History, Leaf, Send, Shrink, Target as TargetIcon } from './icons.tsx';
 import { go } from './App.tsx';
 
 interface Toast { text: string; undoGrowthId?: number }
@@ -109,7 +109,7 @@ export default function SproutView({ id, full }: { id: string; full: boolean; fe
         <button className="exit-full" onClick={exitFull} aria-label="Show Sprout" title="Show Sprout"><Shrink /></button>
       ) : (
       <header className="topbar">
-        <a className="brand" href="#/"><Leaf />Sprout</a>
+        <a className="brand back" href="#/" aria-label="Back to your sprouts" title="Back to your sprouts"><ChevronLeft /><Leaf />Sprout</a>
         <span aria-hidden="true" style={{ color: '#AEB9B1' }}>/</span>
         <span style={{ fontWeight: 600 }}>{sprout.name || 'Your tool'}</span>
         <span className="status" role="status">
