@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { flushSync } from 'react-dom';
 import { api, type Feel, type NextQuestion } from './api.ts';
 import { Leaf, Send } from './icons.tsx';
 import { go } from './App.tsx';
@@ -26,6 +27,19 @@ export default function NewSprout({ feels, setup, canGoHome }: { feels: Feel[]; 
   const retry = useRef<() => void>(() => {});
 
   useEffect(() => { bottom.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, [lines, thinking]);
+
+  // Once Sprout has enough, move on to the feel by itself, after a moment to
+  // read its last reply.
+  const done = step === 'ask' && !!next?.done;
+  useEffect(() => {
+    if (!done) return;
+    const t = setTimeout(() => {
+      const show = () => flushSync(() => setStep('feel'));
+      if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) document.startViewTransition(show);
+      else show();
+    }, 1600);
+    return () => clearTimeout(t);
+  }, [done]);
 
   const take = (n: NextQuestion) => {
     setNext(n);
@@ -143,7 +157,7 @@ export default function NewSprout({ feels, setup, canGoHome }: { feels: Feel[]; 
             <div className="chips indent">{next.suggestions.map(s => <button key={s} className="chip green" onClick={() => answer(s)}>{s}</button>)}</div>
           )}
           {!thinking && next?.done && (
-            <div className="indent"><button className="btn" onClick={() => setStep('feel')}>Next: how should it feel?</button></div>
+            <p className="muted indent" style={{ margin: 0, fontSize: 14 }} aria-live="polite">Next, how it should feel…</p>
           )}
           {error && <p className="error indent" role="alert">{error} <button className="chip" onClick={() => retry.current()}>Try again</button></p>}
           <div ref={bottom} style={{ marginTop: 'auto', paddingTop: 24 }}>
