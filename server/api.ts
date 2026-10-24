@@ -1,0 +1,184 @@
+import { Hono } from 'hono';
+import { streamSSE } from 'hono/streaming';
+import { q, type Db } from './db.ts';
+import { bus, type BusMessage } from './bus.ts';
+import { createSproutRow, plantFiles, ensureDevServer } from './sprouts.ts';
+import { feelById, FEELS } from './feel.ts';
+import { nextQuestion, type Exchange } from './agent/questions.ts';
+import type { CredentialStatus } from './agent/credentials.ts';
+import { plant, isBusy, pausedUntil } from './scheduler.ts';
+import { rewind } from './apply.ts';
+
+const EVENT_KINDS = new Set(['click', 'input', 'submit', 'nav', 'rage', 'error', 'console_error', 'api_error']);
+const REPORT_KINDS = new Set(['server_error', 'build_error']);
+
+export function createApi(db: Db, credentials: () => CredentialStatus | null) {
+  const app = new Hono().basePath('/api');
+
+  const sproutOr404 = (id: string) => {
+    const row = q.sprout(db, id);
+    if (!row) throw new HttpError(404, 'No such sprout.');
+    return row;
+  };
+
+  app.onError((err, c) => {
+    const status = err instanceof HttpError ? err.status : 500;
+    if (status === 500) console.error('[api]', err);
+    return c.json({ error: err.message }, status as 404);
+  });
+
+  app.get('/state', c => c.json({
+    credentials: credentials(),
+    pausedUntil: pausedUntil(),
+    feels: FEELS.map(f => ({ id: f.id, name: f.name, blurb: f.blurb, tokens: f.tokens, fonts: f.fonts })),
+    sprouts: q.sprouts(db).filter(s => s.status !== 'seeding').map(s => ({
+      id: s.id, name: s.name, seed: s.seed, status: s.status, growing: !!s.growing, busy: isBusy(s.id), createdAt: s.created_at,
+    })),
+  }));
+
+  app.get('/stream', c => streamSSE(c, async stream => {
+    const send = (msg: BusMessage) => { void stream.writeSSE({ data: JSON.stringify(msg) }); };
+    bus.on('message', send);
+    const ping = setInterval(() => { void stream.writeSSE({ event: 'ping', data: '' }); }, 20_000);
+    await new Promise<void>(resolve => stream.onAbort(resolve));
+    clearInterval(ping);
+    bus.off('message', send);
+  }));
+
+  // ---- seeding: the conversation before planting ----
+
+  app.post('/seed', async c => {
+    const { seed } = await c.req.json<{ seed: string }>();
+    if (!seed?.trim()) throw new HttpError(400, 'Say what you want to grow.');
+    const id = createSproutRow(db, seed.trim().slice(0, 500));
+    const next = await nextQuestion(seed.trim(), []);
+    if (next.name) q.update(db, id, { name: next.name });
+    return c.json({ id, next });
+  });
+
+  app.post('/sprouts/:id/answer', async c => {
+    const row = sproutOr404(c.req.param('id'));
+    const { question, answer } = await c.req.json<{ question: string; answer: string }>();
+    const exchange = JSON.parse(row.conversation) as Exchange[];
+    exchange.push({ q: question, a: answer.slice(0, 500) });
+    q.update(db, row.id, { conversation: JSON.stringify(exchange) });
+    const next = await nextQuestion(row.seed, exchange);
+    if (next.done && next.name) q.update(db, row.id, { name: next.name });
+    return c.json({ next });
+  });
+
+  app.post('/sprouts/:id/plant', async c => {
+    const row = sproutOr404(c.req.param('id'));
+    if (row.status !== 'seeding') throw new HttpError(409, 'Already planted.');
+    const { preset, note } = await c.req.json<{ preset: string; note?: string }>();
+    const feel = feelById(preset);
+    q.update(db, row.id, { feel: JSON.stringify({ preset: feel.id, note: note?.trim().slice(0, 200) || undefined }), status: 'planting' });
+    await plantFiles(row.id, feel);
+    void plant(db, row.id);
+    return c.json({ ok: true });
+  });
+
+  // ---- a sprout ----
+
+  app.get('/sprouts/:id', c => {
+    const row = sproutOr404(c.req.param('id'));
+    const parse = (rows: Record<string, unknown>[], ...keys: string[]) => rows.map(r => {
+      for (const k of keys) if (typeof r[k] === 'string') r[k] = JSON.parse(r[k] as string);
+      return r;
+    });
+    return c.json({
+      sprout: {
+        id: row.id, name: row.name, seed: row.seed, status: row.status, growing: !!row.growing,
+        feel: row.feel ? JSON.parse(row.feel) : null, busy: isBusy(row.id), pending: !!row.pending_apply,
+      },
+      growth: db.prepare('SELECT id, ts, kind, title, detail, rewindable FROM growth WHERE sprout_id = ? ORDER BY id DESC').all(row.id),
+      buds: parse(db.prepare("SELECT id, ts, kind, text, why, suggestions, status FROM buds WHERE sprout_id = ? AND status = 'proposed' ORDER BY id").all(row.id) as Record<string, unknown>[], 'suggestions'),
+      whispers: parse(db.prepare('SELECT id, ts, text, target, status FROM whispers WHERE sprout_id = ? ORDER BY id DESC LIMIT 30').all(row.id) as Record<string, unknown>[], 'target'),
+      turns: db.prepare('SELECT id, kind, reason, started_at, ended_at, status, summary, cost_usd FROM turns WHERE sprout_id = ? ORDER BY id DESC LIMIT 10').all(row.id),
+    });
+  });
+
+  app.post('/sprouts/:id/start', async c => {
+    const row = sproutOr404(c.req.param('id'));
+    if (row.status === 'seeding') throw new HttpError(409, 'Not planted yet.');
+    const port = await ensureDevServer(db, row.id);
+    return c.json({ url: `http://127.0.0.1:${port}/` });
+  });
+
+  app.post('/sprouts/:id/events', async c => {
+    const row = sproutOr404(c.req.param('id'));
+    const { events } = await c.req.json<{ events: { kind: string; ts: number; target?: unknown; detail?: unknown }[] }>();
+    const insert = db.prepare('INSERT INTO events (sprout_id, ts, kind, target, detail) VALUES (?, ?, ?, ?, ?)');
+    for (const e of (events ?? []).slice(0, 200)) {
+      if (!EVENT_KINDS.has(e.kind)) continue;
+      insert.run(row.id, Number(e.ts) || Date.now(), e.kind, e.target ? JSON.stringify(e.target).slice(0, 1000) : null, e.detail ? JSON.stringify(e.detail).slice(0, 2000) : null);
+    }
+    q.update(db, row.id, { last_activity: Date.now() });
+    return c.json({ ok: true });
+  });
+
+  app.post('/sprouts/:id/activity', c => {
+    const row = sproutOr404(c.req.param('id'));
+    q.update(db, row.id, { last_activity: Date.now() });
+    return c.json({ ok: true });
+  });
+
+  // From the sprout's dev server plugin.
+  app.post('/sprouts/:id/report', async c => {
+    const row = sproutOr404(c.req.param('id'));
+    const { kind, detail } = await c.req.json<{ kind: string; detail: unknown }>();
+    if (REPORT_KINDS.has(kind)) {
+      db.prepare('INSERT INTO events (sprout_id, ts, kind, detail) VALUES (?, ?, ?, ?)').run(row.id, Date.now(), kind, JSON.stringify(detail).slice(0, 2000));
+    }
+    return c.json({ ok: true });
+  });
+
+  app.post('/sprouts/:id/whisper', async c => {
+    const row = sproutOr404(c.req.param('id'));
+    const { text, target } = await c.req.json<{ text: string; target?: unknown }>();
+    if (!text?.trim()) throw new HttpError(400, 'Say something first.');
+    db.prepare('INSERT INTO whispers (sprout_id, ts, text, target) VALUES (?, ?, ?, ?)').run(row.id, Date.now(), text.trim().slice(0, 1000), target ? JSON.stringify(target) : null);
+    bus.send({ type: 'sprout', sproutId: row.id });
+    return c.json({ ok: true, growing: !!row.growing });
+  });
+
+  app.post('/sprouts/:id/buds/:budId', async c => {
+    const row = sproutOr404(c.req.param('id'));
+    const { action, answer } = await c.req.json<{ action: 'accept' | 'dismiss' | 'answer'; answer?: string }>();
+    const bud = db.prepare("SELECT id, kind FROM buds WHERE id = ? AND sprout_id = ? AND status = 'proposed'").get(Number(c.req.param('budId')), row.id) as { id: number; kind: string } | undefined;
+    if (!bud) throw new HttpError(404, 'That suggestion is no longer open.');
+    if (action === 'answer') {
+      if (!answer?.trim()) throw new HttpError(400, 'Answer first.');
+      db.prepare("UPDATE buds SET status = 'answered', answer = ? WHERE id = ?").run(answer.trim().slice(0, 500), bud.id);
+    } else {
+      db.prepare('UPDATE buds SET status = ? WHERE id = ?').run(action === 'accept' ? 'accepted' : 'dismissed', bud.id);
+    }
+    bus.send({ type: 'sprout', sproutId: row.id });
+    return c.json({ ok: true });
+  });
+
+  app.post('/sprouts/:id/growing', async c => {
+    const row = sproutOr404(c.req.param('id'));
+    const { on } = await c.req.json<{ on: boolean }>();
+    q.update(db, row.id, { growing: on ? 1 : 0 });
+    bus.send({ type: 'sprout', sproutId: row.id });
+    return c.json({ ok: true });
+  });
+
+  app.post('/sprouts/:id/rewind', async c => {
+    const row = sproutOr404(c.req.param('id'));
+    const { growthId } = await c.req.json<{ growthId: number }>();
+    try {
+      await rewind(db, row.id, growthId);
+    } catch (err) {
+      throw new HttpError(409, (err as Error).message);
+    }
+    return c.json({ ok: true });
+  });
+
+  return app;
+}
+
+class HttpError extends Error {
+  constructor(public status: number, message: string) { super(message); }
+}

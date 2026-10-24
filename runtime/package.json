@@ -1,0 +1,17 @@
+{
+  "name": "sprout-runtime",
+  "private": true,
+  "type": "module",
+  "description": "Shared dependencies for every sprout. Installed once into SPROUT_HOME by the greenhouse.",
+  "dependencies": {
+    "@types/node": "26.6.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "hono": "4.13.13",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "typescript": "7.0.2",
+    "vite": "8.3.5"
+  }
+}
