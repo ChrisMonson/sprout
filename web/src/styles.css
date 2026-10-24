@@ -111,7 +111,33 @@ h1 { margin: 0; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; }
 .switch[aria-checked='true'] .track::after { left: 17px; }
 
 .stage { flex: 1; position: relative; display: flex; flex-direction: column; gap: 12px; padding: 16px; min-height: 0; }
+.frame-shell { flex: 1; display: flex; min-height: 0; border-radius: 16px; }
 .frame { flex: 1; width: 100%; border: 1px solid var(--gh-line); border-radius: 16px; background: #fff; min-height: 420px; }
+
+.frame.placeholder { background: #FBFAF7; animation: breathe 1.8s ease-in-out 0.5s infinite; }
+@keyframes breathe { 0%, 100% { background: #FBFAF7; } 50% { background: #F1F3F0; } }
+
+/* Moving between the greenhouse and a sprout: the tray cell grows into the
+   sprout's frame (and back), the name glides into the header, the rest fades. */
+/* An even ease-in-out: a front-loaded curve makes the open look like a snap,
+   because almost all the growth happens in the first few frames. */
+::view-transition-group(*) { animation-duration: 0.5s; animation-timing-function: cubic-bezier(0.45, 0, 0.2, 1); }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.22s; }
+/* The cell and the frame behave like one container changing size: its box
+   grows or shrinks while what's inside stays at its natural size (clipped,
+   not zoomed), and the old view stays put until late in the move. */
+.tray .sprout-card, .frame-shell { view-transition-class: cell; }
+/* The moving box has its own surface, so the change in size reads even while
+   the tool inside is still loading (an iframe paints nothing at first). */
+::view-transition-image-pair(*.cell) { border-radius: 14px; overflow: hidden; background: #FFFDF9; box-shadow: 0 0 0 1px rgba(120, 95, 60, 0.14), 0 10px 30px rgba(24, 32, 27, 0.12); }
+::view-transition-old(*.cell), ::view-transition-new(*.cell) {
+  width: 100%; height: 100%; object-fit: none; object-position: left top;
+  animation-duration: 0.5s; animation-timing-function: linear; animation-fill-mode: both;
+}
+::view-transition-old(*.cell) { animation-name: cell-out; }
+::view-transition-new(*.cell) { animation-name: cell-in; }
+@keyframes cell-out { 0%, 60% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes cell-in { 0%, 45% { opacity: 0; } 100% { opacity: 1; } }
 
 .whisper-wrap { display: flex; justify-content: center; z-index: 3; }
 .whisper { pointer-events: auto; width: 100%; max-width: 640px; background: var(--gh-dark); color: #fff; border-radius: 20px; padding: 8px; box-shadow: 0 16px 40px rgba(24, 32, 27, 0.25); display: flex; flex-direction: column; gap: 6px; }
@@ -166,7 +192,7 @@ h1 { margin: 0; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; }
 
 /* ---- tool fills the window, Sprout hidden ---- */
 .app.full .stage { padding: 0; gap: 0; }
-.app.full .frame { border: 0; border-radius: 0; min-height: 0; }
+.app.full .frame, .app.full .frame-shell { border: 0; border-radius: 0; min-height: 0; }
 .app.full .whisper-wrap { position: absolute; left: 0; right: 0; bottom: 20px; padding: 0 16px; }
 .app.full .card-float { bottom: 96px; }
 .whisper-fab { position: absolute; right: 20px; bottom: 20px; z-index: 3; width: 52px; height: 52px; border: 0; border-radius: 50%; background: var(--gh-dark); color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 30px rgba(24, 32, 27, 0.25); opacity: 0.85; }

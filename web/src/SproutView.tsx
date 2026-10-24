@@ -1,12 +1,17 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { api, timeOf, useStream, type Bud, type Feel, type SproutDetail, type Target } from './api.ts';
+import { api, timeOf, useStream, type AppState, type Bud, type SproutDetail, type Target } from './api.ts';
 import { Bud as BudIcon, Check, ChevronLeft, Close, Expand, Grow, History, Leaf, Send, Shrink, Target as TargetIcon } from './icons.tsx';
 import { go } from './App.tsx';
 
 interface Toast { text: string; undoGrowthId?: number }
 
-export default function SproutView({ id, full }: { id: string; full: boolean; feels: Feel[] }) {
-  const [detail, setDetail] = useState<SproutDetail | null>(null);
+export default function SproutView({ id, full, summary }: { id: string; full: boolean; summary?: AppState['sprouts'][number] }) {
+  const [loaded, setDetail] = useState<SproutDetail | null>(null);
+  // Until the full detail arrives, draw the view from the home page's summary
+  // so it appears at once (and the tray cell has a frame to grow into).
+  const detail: SproutDetail | null = loaded ?? (summary ? {
+    sprout: { ...summary, pending: false, feel: null }, growth: [], buds: [], whispers: [], turns: [], notifications: [],
+  } : null);
   const [url, setUrl] = useState<string | null>(null);
   const [startError, setStartError] = useState('');
   const [lines, setLines] = useState<string[]>([]);
@@ -78,8 +83,8 @@ export default function SproutView({ id, full }: { id: string; full: boolean; fe
   const working = lines.at(-1) ?? wakeReason(detail.turns.find(t => t.status === 'running'));
   if (sprout.status === 'removed') return <div className="app" />;
 
-  if (sprout.status === 'planting' || (sprout.status === 'ready' && !url && !startError)) {
-    return <Sprouting name={sprout.name} lines={lines} planting={sprout.status === 'planting'} />;
+  if (sprout.status === 'planting') {
+    return <Sprouting name={sprout.name} lines={lines} planting />;
   }
   if (sprout.status === 'failed') {
     return (
@@ -111,7 +116,7 @@ export default function SproutView({ id, full }: { id: string; full: boolean; fe
       <header className="topbar">
         <a className="brand back" href="#/" aria-label="Back to your sprouts" title="Back to your sprouts"><ChevronLeft /><Leaf />Sprout</a>
         <span aria-hidden="true" style={{ color: '#AEB9B1' }}>/</span>
-        <span style={{ fontWeight: 600 }}>{sprout.name || 'Your tool'}</span>
+        <span style={{ fontWeight: 600, viewTransitionName: `sprout-name-${id}` }}>{sprout.name || 'Your tool'}</span>
         <span className="status" role="status">
           <i className={sprout.busy ? 'busy' : sprout.growing ? 'on' : ''} />
           {sprout.busy ? 'Working…' : sprout.pending ? 'New growth waiting for a pause' : sprout.growing ? 'Growing' : 'Resting'}
@@ -130,9 +135,9 @@ export default function SproutView({ id, full }: { id: string; full: boolean; fe
       )}
 
       <div className="stage">
-        {url
-          ? <ToolFrame id={id} url={url} name={sprout.name} growing={sprout.growing} full={full} onSent={text => showToast({ text })} />
-          : <p className="error" role="alert">{startError}</p>}
+        {startError
+          ? <p className="error" role="alert">{startError}</p>
+          : <ToolFrame id={id} url={url} name={sprout.name} growing={sprout.growing} full={full} onSent={text => showToast({ text })} />}
 
         {sprout.busy && workingOpen && (
           <aside className="card-float working" aria-live="polite">
@@ -197,7 +202,7 @@ function Sprouting({ name, lines, planting }: { name: string; lines: string[]; p
 }
 
 /** The live tool, plus the whisper bar that talks to the observer inside it. */
-function ToolFrame({ id, url, name, growing, full, onSent }: { id: string; url: string; name: string; growing: boolean; full: boolean; onSent: (text: string) => void }) {
+function ToolFrame({ id, url, name, growing, full, onSent }: { id: string; url: string | null; name: string; growing: boolean; full: boolean; onSent: (text: string) => void }) {
   const frame = useRef<HTMLIFrameElement>(null);
   const [pointing, setPointing] = useState(false);
   const [target, setTarget] = useState<Target | null>(null);
@@ -247,7 +252,14 @@ function ToolFrame({ id, url, name, growing, full, onSent }: { id: string; url: 
   const about = target ? (target.text || target.sproutId || target.tag) : '';
   return (
     <>
-      <iframe ref={frame} className="frame" src={url} title={name || 'Your tool'} />
+      {/* The shell carries the open/close transition. It stays put while the
+          placeholder gives way to the tool: if the named element were swapped
+          mid-animation, the browser would abandon the transition. */}
+      <div className="frame-shell" style={{ viewTransitionName: `sprout-${id}` }}>
+        {url
+          ? <iframe ref={frame} className="frame" src={url} title={name || 'Your tool'} />
+          : <div className="frame placeholder" aria-label={`Opening ${name || 'your tool'}`} />}
+      </div>
       {folded ? (
         <button className="whisper-fab" onClick={() => { setOpen(true); setTimeout(() => input.current?.focus(), 0); }} aria-label="Tell Sprout something" title="Tell Sprout something"><Leaf size={22} /></button>
       ) : (

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { api, useStream, type AppState } from './api.ts';
 import { Leaf, Seed, Seedling } from './icons.tsx';
 import NewSprout from './NewSprout.tsx';
@@ -7,12 +8,33 @@ import SproutView from './SproutView.tsx';
 function useRoute() {
   const [hash, setHash] = useState(location.hash);
   useEffect(() => {
-    const onChange = () => setHash(location.hash);
+    // Route changes animate with a view transition: a tray cell grows into
+    // its sprout's frame and shrinks back (see view-transition-name below).
+    const onChange = () => {
+      const opening = /^#\/s\/([\w-]+)/.exec(location.hash)?.[1];
+      if (opening) transitionSprout = opening;
+      // The clicked cell must be named before the old view is captured.
+      const cell = opening && document.querySelector<HTMLElement>(`a.sprout-card[href="#/s/${opening}"]`);
+      if (cell) {
+        cell.style.viewTransitionName = `sprout-${opening}`;
+        cell.querySelector<HTMLElement>('.n')?.style.setProperty('view-transition-name', `sprout-name-${opening}`);
+      }
+      const update = () => flushSync(() => setHash(location.hash));
+      if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) document.startViewTransition(update);
+      else update();
+    };
     addEventListener('hashchange', onChange);
     return () => removeEventListener('hashchange', onChange);
   }, []);
   return hash.replace(/^#/, '') || '/';
 }
+
+/**
+ * The one tray cell that takes part in the open/close transition: the sprout
+ * being opened, or the one being returned from. Naming every cell would make
+ * each its own animated layer, and the others would float over the new page.
+ */
+let transitionSprout: string | null = null;
 
 export function go(path: string) {
   location.hash = path;
@@ -33,7 +55,10 @@ export default function App() {
   if (!state) return <div className="app" />;
 
   const sproutMatch = /^\/s\/([\w-]+)(\/full)?/.exec(route);
-  if (sproutMatch) return <SproutView key={sproutMatch[1]} id={sproutMatch[1]} full={!!sproutMatch[2]} feels={state.feels} />;
+  if (sproutMatch) {
+    const id = sproutMatch[1];
+    return <SproutView key={id} id={id} full={!!sproutMatch[2]} summary={state.sprouts.find(s => s.id === id)} />;
+  }
   const nothingYet = state.sprouts.length === 0 && state.removed.length === 0;
   if (route === '/new' || nothingYet) {
     return <NewSprout feels={state.feels} setup={<SetupBanners state={state} onChange={refresh} />} canGoHome={!nothingYet} />;
@@ -76,8 +101,9 @@ function Home({ state, onRefresh }: { state: AppState; onRefresh: () => void }) 
             row is filled out with empty cells, the first of which plants a new one. */}
         <div className="sprout-list tray">
           {state.sprouts.map(s => (
-            <a key={s.id} className="sprout-card" href={`#/s/${s.id}`}>
-              <span className="n">{s.name || 'Unnamed sprout'}</span>
+            <a key={s.id} className="sprout-card" href={`#/s/${s.id}`}
+              style={s.id === transitionSprout ? { viewTransitionName: `sprout-${s.id}` } : undefined}>
+              <span className="n" style={s.id === transitionSprout ? { viewTransitionName: `sprout-name-${s.id}` } : undefined}>{s.name || 'Unnamed sprout'}</span>
               <span className="s">{s.seed}</span>
               <span className={`status ${statusGlyph(s).tone}`}>{statusGlyph(s).icon}{statusText(s)}</span>
             </a>
