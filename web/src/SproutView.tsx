@@ -244,8 +244,9 @@ function ToolFrame({ id, url, name, growing, full, onSent }: { id: string; url: 
     setTarget(null);
     setOpen(false);
     try {
-      await api.post(`/sprouts/${id}/whisper`, { text: t, target: sentTarget });
-      onSent(growing ? 'Heard. Sprout will work on it, and change things when you pause.' : 'Heard. Growth is resting, so Sprout will change only what you asked.');
+      const res = await api.post<{ claude?: boolean }>(`/sprouts/${id}/whisper`, { text: t, target: sentTarget });
+      onSent(res.claude === false ? 'Saved. Claude is off, so Sprout will look at this when it’s turned back on.'
+        : growing ? 'Heard. Sprout will work on it, and change things when you pause.' : 'Heard. Growth is resting, so Sprout will change only what you asked.');
     } catch (err) {
       onSent((err as Error).message);
       setText(t);

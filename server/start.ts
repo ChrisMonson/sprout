@@ -14,6 +14,8 @@ import { startScheduler } from './scheduler.ts';
 import { stopAll } from './sprouts.ts';
 import { acquireLock, releaseLock } from './lock.ts';
 import { checkCredentials, openSignIn, type CredentialStatus } from './agent/credentials.ts';
+import { listModels } from './agent/models.ts';
+import { claudeEnabled } from './settings.ts';
 
 export interface GreenhouseOptions {
   port: number;
@@ -46,8 +48,15 @@ export async function startGreenhouse(options: GreenhouseOptions): Promise<Green
 
   let credentials: CredentialStatus | null = null;
   const recheck = async () => {
+    // With Claude off, Sprout never contacts it, not even to check sign-in.
+    if (!claudeEnabled(db)) {
+      credentials = null;
+      log('Claude: off (Greenhouse Settings).');
+      return { ok: false, checkedAt: Date.now(), message: 'Claude is turned off in Settings.' };
+    }
     credentials = await checkCredentials();
     log(credentials.ok ? 'Claude: signed in.' : `Claude: ${credentials.message}`);
+    if (credentials.ok) void listModels(true).catch(() => {});
     return credentials;
   };
   void recheck();

@@ -48,10 +48,19 @@ For development, `npm run desktop:dev` runs the app unpackaged, as **Sprout Dev*
 
 `npm run desktop` builds once and runs it the way the packaged app does. `npx electron dist/desktop/selftest.mjs` runs the gate's pass/fail scenarios inside Electron.
 
+### Greenhouse Settings
+
+The cog on the home page opens Settings:
+- **Use Claude** turns Claude on or off. With it off, Sprout never contacts Claude: your tools keep running, reminders arrive and you can import sprouts, but nothing grows and new sprouts can't be planted. Whispers wait until it's back on.
+- **Models** come live from your Claude account. Pick a preset (Balanced, Thorough, Light) or a model and effort for each step (questions, planting, growing, observing). A family like `opus` always uses its newest version; a specific version stays pinned, and falls back to its family if your account stops offering it. Each turn records the exact model that ran.
+- **Agents working at once**: 1 to 4.
+
+A turn that fails waits before retrying (1, then 5, then 30 minutes) instead of trying again right away.
+
 Settings (environment variables):
 - `SPROUT_HOME`: where sprouts live (default `~/Sprout`)
 - `SPROUT_PORT`: greenhouse port (default `4100`)
-- `SPROUT_CONCURRENCY`: agent turns allowed at once across all sprouts (default `1`)
+- `SPROUT_CONCURRENCY`: the starting value for agents working at once (default `1`; Settings overrides it)
 
 > **Personal use only, for now.** Sprout runs agents on the Claude subscription you're signed in with. Anthropic's terms don't allow a third-party app to route other people's Pro/Max credentials. Before sharing Sprout, add an API-key path in `server/agent/credentials.ts`, the only place that handles sign-in.
 

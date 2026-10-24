@@ -4,7 +4,8 @@
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import { agentEnv } from './credentials.ts';
 import { claudeExecutable } from '../platform.ts';
-import { MODELS } from './runner.ts';
+import { resolveStep } from './models.ts';
+import type { StepModel } from '../settings.ts';
 
 export interface Exchange { q: string; a: string }
 export interface NextQuestion { done: boolean; question: string; suggestions: string[]; name: string; reply: string }
@@ -31,7 +32,8 @@ const SCHEMA = {
   },
 };
 
-export async function nextQuestion(seed: string, exchange: Exchange[]): Promise<NextQuestion> {
+export async function nextQuestion(seed: string, exchange: Exchange[], chosen: StepModel): Promise<NextQuestion> {
+  const { model, effort } = resolveStep('questions', chosen);
   const forced = exchange.length >= MAX_QUESTIONS;
   const prompt = [
     `They want to grow: "${seed}"`,
@@ -42,7 +44,8 @@ export async function nextQuestion(seed: string, exchange: Exchange[]): Promise<
   const q = query({
     prompt,
     options: {
-      model: MODELS.observe,
+      model,
+      effort: effort as 'low' | 'medium' | 'high' | 'xhigh' | 'max' | undefined,
       systemPrompt: SYSTEM,
       tools: [],
       settingSources: [],

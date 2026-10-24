@@ -11,6 +11,8 @@ import { rewind } from './apply.ts';
 import { removeSprout, restoreSprout, deleteForever, listRemoved } from './remove.ts';
 import { exportSprout, importSprout } from './transfer.ts';
 import { addNote } from './memory.ts';
+import { getSettings, updateSettings, claudeEnabled, PRESETS, STEPS } from './settings.ts';
+import { listModels, knownModels, resolveStep } from './agent/models.ts';
 import { schedule, cancel, cancelById, upcoming, type NotificationRequest } from './notifications.ts';
 
 const EVENT_KINDS = new Set(['click', 'input', 'submit', 'nav', 'rage', 'error', 'console_error', 'api_error']);
@@ -38,7 +40,37 @@ export function createApi(db: Db, host: Host) {
     return c.json({ error: err.message }, status as 404);
   });
 
+  // ---- greenhouse settings ----
+
+  const settingsView = async (refresh = false) => {
+    const settings = getSettings(db);
+    let models = knownModels();
+    let modelsError = '';
+    if (settings.claude.enabled && (refresh || !models.length)) {
+      try { models = await listModels(refresh); } catch (err) { modelsError = `Couldn’t get the list of models from Claude: ${(err as Error).message.split('\n')[0]}`; }
+    }
+    const effective = Object.fromEntries(STEPS.map(step => [step, resolveStep(step, settings.models[step], models)]));
+    return { settings, presets: PRESETS, models, modelsError, effective };
+  };
+
+  app.get('/settings', async c => c.json(await settingsView()));
+  app.post('/settings/models/refresh', async c => c.json(await settingsView(true)));
+
+  app.post('/settings', async c => {
+    const patch = await c.req.json();
+    const wasEnabled = claudeEnabled(db);
+    try { updateSettings(db, patch); } catch (err) { throw new HttpError(400, (err as Error).message); }
+    if (claudeEnabled(db) !== wasEnabled) await host.recheck();
+    bus.send({ type: 'sprout', sproutId: '' });
+    return c.json(await settingsView());
+  });
+
+  const needsClaude = () => {
+    if (!claudeEnabled(db)) throw new HttpError(409, 'Planting a new sprout needs Claude. Turn Claude on in Settings, or import a .sprout file instead.');
+  };
+
   app.get('/state', c => c.json({
+    claudeEnabled: claudeEnabled(db),
     credentials: host.credentials(),
     git: host.git,
     pausedUntil: pausedUntil(),
@@ -68,21 +100,23 @@ export function createApi(db: Db, host: Host) {
   // ---- seeding: the conversation before planting ----
 
   app.post('/seed', async c => {
+    needsClaude();
     const { seed } = await c.req.json<{ seed: string }>();
     if (!seed?.trim()) throw new HttpError(400, 'Say what you want to grow.');
     const id = createSproutRow(db, seed.trim().slice(0, 500));
-    const next = await nextQuestion(seed.trim(), []);
+    const next = await nextQuestion(seed.trim(), [], getSettings(db).models.questions);
     if (next.name) q.update(db, id, { name: next.name });
     return c.json({ id, next });
   });
 
   app.post('/sprouts/:id/answer', async c => {
+    needsClaude();
     const row = sproutOr404(c.req.param('id'));
     const { question, answer } = await c.req.json<{ question: string; answer: string }>();
     const exchange = JSON.parse(row.conversation) as Exchange[];
     exchange.push({ q: question, a: answer.slice(0, 500) });
     q.update(db, row.id, { conversation: JSON.stringify(exchange) });
-    const next = await nextQuestion(row.seed, exchange);
+    const next = await nextQuestion(row.seed, exchange, getSettings(db).models.questions);
     if (next.done && next.name) q.update(db, row.id, { name: next.name });
     return c.json({ next });
   });
@@ -90,6 +124,7 @@ export function createApi(db: Db, host: Host) {
   app.post('/sprouts/:id/plant', async c => {
     const row = sproutOr404(c.req.param('id'));
     if (row.status !== 'seeding') throw new HttpError(409, 'Already planted.');
+    needsClaude();
     const { preset, note } = await c.req.json<{ preset: string; note?: string }>();
     const feel = feelById(preset);
     q.update(db, row.id, { feel: JSON.stringify({ preset: feel.id, note: note?.trim().slice(0, 200) || undefined }), status: 'planting' });
@@ -182,7 +217,7 @@ export function createApi(db: Db, host: Host) {
     if (!text?.trim()) throw new HttpError(400, 'Say something first.');
     db.prepare('INSERT INTO whispers (sprout_id, ts, text, target) VALUES (?, ?, ?, ?)').run(row.id, Date.now(), text.trim().slice(0, 1000), target ? JSON.stringify(target) : null);
     bus.send({ type: 'sprout', sproutId: row.id });
-    return c.json({ ok: true, growing: !!row.growing });
+    return c.json({ ok: true, growing: !!row.growing, claude: claudeEnabled(db) });
   });
 
   app.post('/sprouts/:id/buds/:budId', async c => {

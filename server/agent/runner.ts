@@ -13,13 +13,10 @@ import { agentEnv } from './credentials.ts';
 import { claudeExecutable } from '../platform.ts';
 import { checkToolUse } from './confine.ts';
 import { createSproutTools, type TurnContext } from './tools.ts';
+import { resolveStep } from './models.ts';
+import { getSettings } from '../settings.ts';
 
 export type TurnKind = 'plant' | 'grow' | 'observe';
-
-export const MODELS = {
-  build: 'claude-opus-5-5',
-  observe: 'claude-haiku-5-5',
-} as const;
 
 export interface TurnSpec {
   db: Db;
@@ -53,7 +50,8 @@ export async function runTurn(spec: TurnSpec): Promise<TurnOutcome> {
   const { db, sproutId, kind } = spec;
   const p = sproutPaths(sproutId);
   const canBuild = kind !== 'observe';
-  const model = canBuild ? MODELS.build : MODELS.observe;
+  // The step's chosen model (a family alias or a pinned version), from Greenhouse Settings.
+  const { model, effort } = resolveStep(kind, getSettings(db).models[kind]);
   const startedAt = Date.now();
   const deadline = startedAt + spec.deadlineMs;
 
@@ -94,7 +92,7 @@ export async function runTurn(spec: TurnSpec): Promise<TurnOutcome> {
       options: {
         cwd: p.work,
         model,
-        effort: canBuild ? 'high' : 'medium',
+        effort: effort as 'low' | 'medium' | 'high' | 'xhigh' | 'max' | undefined,
         abortController: abort,
         persistSession: false,
         settingSources: [],
@@ -141,6 +139,8 @@ export async function runTurn(spec: TurnSpec): Promise<TurnOutcome> {
       transcript.write(JSON.stringify(msg) + '\n');
       if (msg.type === 'system' && msg.subtype === 'init') {
         cliVersion = msg.claude_code_version;
+        // Record the exact model that ran, not the alias that was asked for.
+        db.prepare('UPDATE turns SET model = ? WHERE id = ?').run(msg.model, turnId);
       } else if (msg.type === 'assistant') {
         if (msg.error === 'rate_limit') outcome = { ...outcome, status: 'rate_limited' };
         if (msg.error === 'authentication_failed') outcome = { ...outcome, status: 'signed_out' };

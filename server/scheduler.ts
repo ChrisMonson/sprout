@@ -14,11 +14,27 @@ import { resetWork, ensureDevServer } from './sprouts.ts';
 import { dirty } from './git.ts';
 import { runTurn, type TurnKind, type TurnOutcome } from './agent/runner.ts';
 import { deliverDue } from './notifications.ts';
+import { claudeEnabled, getSettings } from './settings.ts';
 import { brief, plantOpening, growOpening, observeOpening, collectAsks } from './agent/opening.ts';
 
 const TICK_MS = 3_000;
 const MINUTES: Record<TurnKind, number> = { plant: 20, grow: 15, observe: 4 };
-const CONCURRENCY = Number(process.env.SPROUT_CONCURRENCY ?? 1);
+/** After a turn fails, wait before trying again: 1 minute, then 5, then 30. */
+export const BACKOFF_MS = [60_000, 5 * 60_000, 30 * 60_000];
+const failures = new Map<string, { count: number; until: number }>();
+
+export function noteOutcome(sproutId: string, status: string, now = Date.now()) {
+  if (status === 'failed') {
+    const count = (failures.get(sproutId)?.count ?? 0) + 1;
+    failures.set(sproutId, { count, until: now + BACKOFF_MS[Math.min(count, BACKOFF_MS.length) - 1] });
+  } else if (status === 'done' || status === 'timeout') {
+    failures.delete(sproutId);
+  }
+}
+
+export function backoffUntil(sproutId: string): number {
+  return failures.get(sproutId)?.until ?? 0;
+}
 
 const busy = new Set<string>();
 const lastGrowAt = new Map<string, number>();
@@ -45,7 +61,8 @@ async function tick(db: Db) {
     if (row.status !== 'ready') continue;
     await maybeApply(db, row.id, now).catch(err => console.error('[apply]', row.id, err));
     await watchdog(db, row.id, now).catch(err => console.error('[watchdog]', row.id, err));
-    if (busy.size >= CONCURRENCY) continue;
+    // With Claude off, nothing wakes an agent; applying and watching go on.
+    if (!claudeEnabled(db) || busy.size >= getSettings(db).concurrency) continue;
     const wake = decide(db, row, now);
     if (wake) void growOrObserve(db, row.id, wake.kind, wake.reason);
   }
@@ -56,7 +73,7 @@ function decide(db: Db, row: SproutRow, now: number) {
   return nextTurn({
     now,
     growing: !!row.growing,
-    pausedUntil: Math.max(row.paused_until, globalPauseUntil),
+    pausedUntil: Math.max(row.paused_until, globalPauseUntil, backoffUntil(row.id)),
     busy: busy.has(row.id) || hasPending(db, row.id),
     asks: asks.whispers.length + asks.buds.length + asks.answers.length,
     rollbackNote: hasWakeNote(row.id),
@@ -139,7 +156,9 @@ async function growOrObserve(db: Db, sproutId: string, kind: 'grow' | 'observe',
       }
     }
     handleLimits(db, sproutId, outcome);
+    noteOutcome(sproutId, outcome.status);
   } catch (err) {
+    noteOutcome(sproutId, 'failed');
     console.error(`[${kind}]`, sproutId, err);
   } finally {
     busy.delete(sproutId);

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type DragEvent } from 'react';
 import { flushSync } from 'react-dom';
 import { api, useStream, type AppState } from './api.ts';
-import { Leaf, Seed, Seedling } from './icons.tsx';
+import { Cog, Leaf, Seed, Seedling } from './icons.tsx';
 import NewSprout from './NewSprout.tsx';
 import SproutView from './SproutView.tsx';
+import SettingsPage from './Settings.tsx';
 
 function useRoute() {
   const [hash, setHash] = useState(location.hash);
@@ -75,9 +76,10 @@ export default function App() {
     const id = sproutMatch[1];
     return <SproutView key={id} id={id} full={!!sproutMatch[2]} summary={state.sprouts.find(s => s.id === id)} />;
   }
+  if (route === '/settings') return <SettingsPage state={state} onChange={refresh} />;
   const nothingYet = state.sprouts.length === 0 && state.removed.length === 0;
   if (route === '/new' || nothingYet) {
-    return <NewSprout feels={state.feels} setup={<SetupBanners state={state} onChange={refresh} />} canGoHome={!nothingYet} />;
+    return <NewSprout feels={state.feels} setup={<SetupBanners state={state} onChange={refresh} />} canGoHome={!nothingYet} claude={state.claudeEnabled !== false} />;
   }
   return <Home state={state} onRefresh={refresh} />;
 }
@@ -111,6 +113,7 @@ function Home({ state, onRefresh }: { state: AppState; onRefresh: () => void }) 
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <ImportSprout onError={setImportError} />
             <button className="btn" onClick={() => go('/new')}>Grow something new</button>
+            <a className="pill-btn icon-only" href="#/settings" aria-label="Settings" title="Settings"><Cog /></a>
           </div>
         </div>
         <SetupBanners state={state} onChange={onRefresh} />
@@ -185,9 +188,14 @@ function SetupBanners({ state, onChange }: { state: AppState; onChange: () => vo
     setChecking(false);
     onChange();
   };
-  const signedOut = state.credentials && !state.credentials.ok;
+  const signedOut = state.claudeEnabled !== false && state.credentials && !state.credentials.ok;
   return (
     <>
+      {state.claudeEnabled === false && (
+        <div className="banner" role="status">
+          Claude is off, so nothing grows and new sprouts can’t be planted. Your tools keep working. <a href="#/settings">Turn it on in Settings</a>.
+        </div>
+      )}
       {state.git === false && (
         <div className="banner" role="status">
           Sprout needs Apple’s Command Line Tools to keep track of changes. Open Terminal, run <code>xcode-select --install</code>, then restart Sprout.

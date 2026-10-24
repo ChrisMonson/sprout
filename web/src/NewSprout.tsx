@@ -12,7 +12,7 @@ const EXAMPLES = [
   'Remember what I talked about with each client',
 ];
 
-export default function NewSprout({ feels, setup, canGoHome }: { feels: Feel[]; setup: ReactNode; canGoHome: boolean }) {
+export default function NewSprout({ feels, setup, canGoHome, claude = true }: { feels: Feel[]; setup: ReactNode; canGoHome: boolean; claude?: boolean }) {
   const [step, setStep] = useState<'seed' | 'ask' | 'feel'>('seed');
   const [seed, setSeed] = useState('');
   const [id, setId] = useState<string | null>(null);
@@ -107,7 +107,7 @@ export default function NewSprout({ feels, setup, canGoHome }: { feels: Feel[]; 
             <div className="composer big" style={{ width: '100%' }}>
               <label htmlFor="seed" className="sr">Describe the tool you want</label>
               <input id="seed" autoFocus value={seed} onChange={e => setSeed(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void plantSeed(); }} placeholder="Something to keep track of my sourdough starter" />
-              <button className="btn" onClick={plantSeed} disabled={!seed.trim()}>Plant</button>
+              <button className="btn" onClick={plantSeed} disabled={!seed.trim() || !claude}>Plant</button>
             </div>
             <div className="chips" style={{ justifyContent: 'center' }}>
               {EXAMPLES.map(x => <button key={x} className="chip" onClick={() => setSeed(x)}>{x}</button>)}
