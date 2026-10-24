@@ -10,6 +10,7 @@ import { plant, isBusy, pausedUntil } from './scheduler.ts';
 import { rewind } from './apply.ts';
 import { removeSprout, restoreSprout, deleteForever, listRemoved } from './remove.ts';
 import { exportSprout, importSprout } from './transfer.ts';
+import { addNote } from './memory.ts';
 import { schedule, cancel, cancelById, upcoming, type NotificationRequest } from './notifications.ts';
 
 const EVENT_KINDS = new Set(['click', 'input', 'submit', 'nav', 'rage', 'error', 'console_error', 'api_error']);
@@ -195,6 +196,24 @@ export function createApi(db: Db, host: Host) {
     } else {
       db.prepare('UPDATE buds SET status = ? WHERE id = ?').run(action === 'accept' ? 'accepted' : 'dismissed', bud.id);
     }
+    bus.send({ type: 'sprout', sproutId: row.id });
+    return c.json({ ok: true });
+  });
+
+  app.post('/sprouts/:id/details', async c => {
+    const row = sproutOr404(c.req.param('id'));
+    const body = await c.req.json<{ name?: string; seed?: string }>();
+    const name = String(body.name ?? row.name).trim();
+    const seed = String(body.seed ?? row.seed).trim();
+    if (!name) throw new HttpError(400, 'Give it a name.');
+    if (name.length > 60) throw new HttpError(400, 'Keep the name under 60 characters.');
+    if (seed.length > 500) throw new HttpError(400, 'Keep the description under 500 characters.');
+    if (name !== row.name) {
+      // The tool's own screen shows its name too; the agent brings that in line next time it grows.
+      addNote(row.id, `The person renamed the tool from "${row.name}" to "${name}". Update the name shown in the tool to match, if it shows one.`);
+    }
+    if (seed !== row.seed) addNote(row.id, `The person changed how they describe the tool to: "${seed}".`);
+    q.update(db, row.id, { name, seed });
     bus.send({ type: 'sprout', sproutId: row.id });
     return c.json({ ok: true });
   });

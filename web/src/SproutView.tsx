@@ -178,7 +178,7 @@ export default function SproutView({ id, full, summary }: { id: string; full: bo
         </div>
       )}
 
-      {drawer === 'settings' && <SettingsDrawer id={id} name={sprout.name} onClose={() => setDrawer(null)} />}
+      {drawer === 'settings' && <SettingsDrawer id={id} name={sprout.name} seed={sprout.seed} onSaved={refresh} onClose={() => setDrawer(null)} />}
       {drawer === 'history' && <HistoryDrawer detail={detail} onClose={() => setDrawer(null)} onRewind={undo}
         onCancelNotification={nid => api.post(`/sprouts/${id}/notify/cancel`, { id: nid }).then(refresh).catch(() => {})} />}
     </div>
@@ -441,13 +441,14 @@ function ExportSprout({ id }: { id: string }) {
 }
 
 /** What you can do with the sprout itself, as opposed to its history. */
-function SettingsDrawer({ id, name, onClose }: { id: string; name: string; onClose: () => void }) {
+function SettingsDrawer({ id, name, seed, onSaved, onClose }: { id: string; name: string; seed: string; onSaved: () => void; onClose: () => void }) {
   return (
     <aside className="drawer" aria-label="Settings">
       <header>
         <h2>Settings</h2>
         <button className="icon-btn" aria-label="Close settings" style={{ background: '#F0F3F0', width: 40, height: 40 }} onClick={onClose}><Close size={16} /></button>
       </header>
+      <DetailsEditor id={id} name={name} seed={seed} onSaved={onSaved} />
       <section>
         <h3>Export</h3>
         <p className="muted" style={{ margin: 0, fontSize: 14, lineHeight: 1.5 }}>Save {name || 'this sprout'} as a .sprout file: its code and history, what Sprout has learned, and optionally your data. Import it from the home page, here or on another Mac.</p>
@@ -458,5 +459,43 @@ function SettingsDrawer({ id, name, onClose }: { id: string; name: string; onClo
         <RemoveSprout id={id} name={name} />
       </section>
     </aside>
+  );
+}
+
+/** Rename the sprout and change the description shown on its card. */
+function DetailsEditor({ id, name, seed, onSaved }: { id: string; name: string; seed: string; onSaved: () => void }) {
+  const [draftName, setDraftName] = useState(name);
+  const [draftSeed, setDraftSeed] = useState(seed);
+  const [status, setStatus] = useState<{ kind: 'idle' | 'saving' | 'saved' | 'error'; text?: string }>({ kind: 'idle' });
+  const changed = draftName.trim() !== name || draftSeed.trim() !== seed;
+  const renamed = draftName.trim() !== name;
+
+  const save = async () => {
+    setStatus({ kind: 'saving' });
+    try {
+      await api.post(`/sprouts/${id}/details`, { name: draftName, seed: draftSeed });
+      setStatus({ kind: 'saved', text: renamed ? 'Saved. The name inside the tool updates the next time it grows.' : 'Saved.' });
+      onSaved();
+    } catch (err) {
+      setStatus({ kind: 'error', text: (err as Error).message });
+    }
+  };
+
+  return (
+    <section>
+      <h3>Name and description</h3>
+      <label className="field-label" htmlFor="sprout-name">Name</label>
+      <input id="sprout-name" className="text-field" value={draftName} maxLength={60}
+        onChange={e => { setDraftName(e.target.value); setStatus({ kind: 'idle' }); }} />
+      <label className="field-label" htmlFor="sprout-seed">Description</label>
+      <textarea id="sprout-seed" className="text-field" rows={3} value={draftSeed} maxLength={500}
+        onChange={e => { setDraftSeed(e.target.value); setStatus({ kind: 'idle' }); }} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <button className="btn small" onClick={save} disabled={!changed || !draftName.trim() || status.kind === 'saving'}>
+          {status.kind === 'saving' ? 'Saving…' : 'Save'}
+        </button>
+        {status.text && <span className={status.kind === 'error' ? 'error' : 'muted'} role={status.kind === 'error' ? 'alert' : 'status'} style={{ fontSize: 13 }}>{status.text}</span>}
+      </div>
+    </section>
   );
 }
