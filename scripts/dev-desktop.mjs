@@ -34,7 +34,7 @@ function devBundle(electronBinary) {
   mkdirSync(dirname(dest), { recursive: true });
   execFileSync('cp', ['-cR', source, dest]);
   const plist = join(dest, 'Contents', 'Info.plist');
-  for (const [key, value] of [['CFBundleName', 'Sprout Dev'], ['CFBundleDisplayName', 'Sprout Dev'], ['CFBundleIdentifier', 'com.cmonson.sprout.dev']]) {
+  for (const [key, value] of [['CFBundleName', 'Sprout Dev'], ['CFBundleDisplayName', 'Sprout Dev'], ['CFBundleIdentifier', 'com.visualsorcery.sprout.dev']]) {
     execFileSync('plutil', ['-replace', key, '-string', value, plist]);
   }
   copyFileSync(icon, join(dest, 'Contents', 'Resources', 'electron.icns'));

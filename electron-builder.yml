@@ -1,5 +1,5 @@
 # Packages Sprout as a macOS app. Personal use for now: arm64, ad-hoc signed.
-appId: com.cmonson.sprout
+appId: com.visualsorcery.sprout
 productName: Sprout
 directories:
   output: release
