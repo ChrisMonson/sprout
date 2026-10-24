@@ -69,6 +69,7 @@ export function growOpening(db: Db, sproutId: string, minutes: number, reason: s
   const history = db.prepare('SELECT kind, title, ts FROM growth WHERE sprout_id = ? ORDER BY id DESC LIMIT 6').all(sproutId) as { kind: string; title: string; ts: number }[];
   return [
     header(minutes, reason),
+    row.growing ? '' : '## Growth is turned off\nThe person turned growth off, so do exactly what they asked below and nothing else: no fixes or improvements they did not ask for, and no suggestions (propose_bud).',
     asks.whispers.length ? `## What they said\n${asks.whispers.map(w => `- "${w.text}"${describeTarget(w.target)}`).join('\n')}` : '',
     asks.buds.length ? `## Suggestions they said yes to\n${asks.buds.map(b => `- ${b.text}`).join('\n')}` : '',
     asks.answers.length ? `## Answers to your questions\n${asks.answers.map(a => `- You asked "${a.text}". They said: "${a.answer}"`).join('\n')}` : '',

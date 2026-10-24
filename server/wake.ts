@@ -1,6 +1,7 @@
 // Decides whether a sprout's agent should wake, and for what. Growth is pulled
 // by evidence: something the person said, a bud they accepted, or errors.
-// Observation is cheap and periodic; it never changes code.
+// Observation is cheap and periodic; it never changes code. With growth off,
+// only what the person asks for directly wakes the agent.
 
 export const OBSERVE_GAP_MS = 5 * 60_000;
 export const OBSERVE_MIN_EVENTS = 12;
@@ -25,8 +26,11 @@ export interface WakeInput {
 export type Wake = { kind: 'grow' | 'observe'; reason: string } | null;
 
 export function nextTurn(w: WakeInput): Wake {
-  if (!w.growing || w.busy || w.pausedUntil > w.now) return null;
+  if (w.busy || w.pausedUntil > w.now) return null;
+  // Something the person asked for directly is acted on even while growth is
+  // off; growth off only stops the agent from acting on its own.
   if (w.asks > 0) return { kind: 'grow', reason: 'The person asked for something.' };
+  if (!w.growing) return null;
   if (w.rollbackNote) return { kind: 'grow', reason: 'The last change was rolled back.' };
   if (w.errorsSinceGrowMark > 0 && w.now - w.lastGrowAt >= ERROR_GROW_GAP_MS) {
     return { kind: 'grow', reason: `${w.errorsSinceGrowMark} new error(s).` };

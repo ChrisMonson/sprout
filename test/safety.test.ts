@@ -103,10 +103,16 @@ describe('nextTurn', () => {
     expect(nextTurn({ ...quiet, asks: 1 })?.kind).toBe('grow');
   });
 
-  it('never wakes when growth is off, paused or busy', () => {
-    expect(nextTurn({ ...quiet, asks: 1, growing: false })).toBeNull();
+  it('never wakes when paused or busy', () => {
     expect(nextTurn({ ...quiet, asks: 1, pausedUntil: now + 1 })).toBeNull();
     expect(nextTurn({ ...quiet, asks: 1, busy: true })).toBeNull();
+  });
+
+  it('with growth off, acts only on what the person asked for', () => {
+    expect(nextTurn({ ...quiet, growing: false, asks: 1 })?.kind).toBe('grow');
+    expect(nextTurn({ ...quiet, growing: false, rollbackNote: true })).toBeNull();
+    expect(nextTurn({ ...quiet, growing: false, errorsSinceGrowMark: 3, lastGrowAt: 0 })).toBeNull();
+    expect(nextTurn({ ...quiet, growing: false, eventsSinceObserveMark: 50, lastObserveAt: 0 })).toBeNull();
   });
 
   it('grows on errors, but not more often than the error gap', () => {

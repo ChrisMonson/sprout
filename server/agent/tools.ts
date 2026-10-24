@@ -54,6 +54,7 @@ export function createSproutTools(ctx: TurnContext) {
     tool('propose_bud', 'Suggest one new capability the person has not asked for, based on something you saw them do. They will see it as a card and can say yes or no. Nothing is built unless they say yes. Only one open suggestion at a time.',
       { text: z.string().max(220).describe('The suggestion as you would say it to them, e.g. "You log feedings around 8am and 8pm. Want a reminder?"'), why: z.string().max(500).describe('What you observed that led to this') },
       async ({ text, why }) => {
+        if (!q.sprout(db, sproutId)?.growing) return reply(ctx, 'Growth is turned off, so no suggestions right now.');
         const open = db.prepare("SELECT COUNT(*) AS n FROM buds WHERE sprout_id = ? AND status = 'proposed'").get(sproutId) as { n: number };
         if (open.n > 0) return reply(ctx, 'There is already a suggestion waiting for an answer. Wait for it.');
         const dismissed = db.prepare("SELECT text FROM buds WHERE sprout_id = ? AND status = 'dismissed' ORDER BY id DESC LIMIT 10").all(sproutId) as { text: string }[];

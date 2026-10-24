@@ -119,7 +119,7 @@ export default function SproutView({ id, full }: { id: string; full: boolean; fe
         <div className="right">
           <button className="switch" role="switch" aria-checked={sprout.growing} onClick={async () => {
             await api.post(`/sprouts/${id}/growing`, { on: !sprout.growing });
-            showToast({ text: sprout.growing ? `Growth is resting. ${sprout.name || 'Your tool'} won’t change until you turn it back on.` : 'Growing again.' });
+            showToast({ text: sprout.growing ? `Growth is resting. ${sprout.name || 'Your tool'} won’t change on its own, but Sprout will still do what you ask.` : 'Growing again.' });
           }}>
             <span className="track" aria-hidden="true" />Growth
           </button>
@@ -237,7 +237,7 @@ function ToolFrame({ id, url, name, growing, full, onSent }: { id: string; url: 
     setOpen(false);
     try {
       await api.post(`/sprouts/${id}/whisper`, { text: t, target: sentTarget });
-      onSent(growing ? 'Heard. Sprout will work on it, and change things when you pause.' : 'Saved. Sprout will look at it when growth is back on.');
+      onSent(growing ? 'Heard. Sprout will work on it, and change things when you pause.' : 'Heard. Growth is resting, so Sprout will change only what you asked.');
     } catch (err) {
       onSent((err as Error).message);
       setText(t);
@@ -266,7 +266,7 @@ function ToolFrame({ id, url, name, growing, full, onSent }: { id: string; url: 
               style={{ background: pointing ? 'var(--gh-green)' : 'var(--gh-dark-2)', color: '#fff' }}><TargetIcon /></button>
             <label htmlFor="whisper" className="sr">Tell Sprout something</label>
             <input id="whisper" ref={input} value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void send(); }}
-              placeholder={!growing ? 'Growth is resting. Notes will wait for later.' : target ? 'What should change here?' : `Tell Sprout anything about ${name || 'your tool'}…`} />
+              placeholder={target ? 'What should change here?' : `Tell Sprout anything about ${name || 'your tool'}…`} />
             <button className="icon-btn" aria-label="Send to Sprout" style={{ background: 'var(--gh-green)', color: '#fff' }} onClick={send}><Send /></button>
             {full && <button className="icon-btn" aria-label="Hide" title="Hide" style={{ background: 'transparent', color: 'var(--gh-on-dark-muted)' }} onClick={() => { setOpen(false); setTarget(null); if (pointing) togglePoint(); }}><Close size={16} /></button>}
           </div>
@@ -314,7 +314,7 @@ function HistoryDrawer({ detail, onClose, onRewind, onCancelNotification, footer
 }) {
   const day = (ts: number) => new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric' });
   const whisperStatus: Record<string, string> = {
-    new: detail.sprout.growing ? 'Waiting to be worked on' : 'Waiting until growth is back on',
+    new: 'Waiting to be worked on',
     taken: 'Sprout is working on this',
     done: 'Done',
   };
