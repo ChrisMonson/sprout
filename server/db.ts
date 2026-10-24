@@ -78,6 +78,18 @@ CREATE TABLE IF NOT EXISTS growth (
   rewindable INTEGER NOT NULL DEFAULT 0,
   turn_id INTEGER
 );
+CREATE TABLE IF NOT EXISTS notifications (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  sprout_id TEXT NOT NULL,
+  key TEXT,
+  title TEXT NOT NULL,
+  body TEXT,
+  due_at INTEGER NOT NULL,
+  status TEXT NOT NULL DEFAULT 'scheduled',
+  created_at INTEGER NOT NULL,
+  sent_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS notifications_due ON notifications (status, due_at);
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT

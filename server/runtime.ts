@@ -17,8 +17,8 @@ export async function ensureRuntime(log: (line: string) => void = console.log) {
 
   // Greenhouse-owned scripts are refreshed on every start.
   mkdirSync(paths.runtime, { recursive: true });
-  for (const file of ['runner.mjs', 'plugin.mjs', 'observer.js']) {
-    cpSync(join(paths.runtimeSource, file), join(paths.runtime, file));
+  for (const file of ['runner.mjs', 'plugin.mjs', 'observer.js', 'sdk']) {
+    cpSync(join(paths.runtimeSource, file), join(paths.runtime, file), { recursive: true });
   }
 
   const wanted = readFileSync(join(paths.runtimeSource, 'package.json'), 'utf8');

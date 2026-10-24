@@ -39,6 +39,7 @@ export default function SproutView({ id }: { id: string; feels: Feel[] }) {
       refresh();
     }
     if (msg.type === 'toast') showToast({ text: msg.text, undoGrowthId: msg.undoGrowthId });
+    if (msg.type === 'notification') showToast({ text: msg.body ? `${msg.title}: ${msg.body}` : msg.title });
   });
 
   if (!detail) return <div className="app" />;
@@ -113,7 +114,8 @@ export default function SproutView({ id }: { id: string; feels: Feel[] }) {
         </div>
       )}
 
-      {historyOpen && <HistoryDrawer detail={detail} onClose={() => setHistoryOpen(false)} onRewind={undo} />}
+      {historyOpen && <HistoryDrawer detail={detail} onClose={() => setHistoryOpen(false)} onRewind={undo}
+        onCancelNotification={nid => api.post(`/sprouts/${id}/notify/cancel`, { id: nid }).then(refresh).catch(() => {})} />}
     </div>
   );
 }
@@ -241,7 +243,9 @@ function BudCard({ id, bud, onDone }: { id: string; bud: Bud; onDone: () => void
   );
 }
 
-function HistoryDrawer({ detail, onClose, onRewind }: { detail: SproutDetail; onClose: () => void; onRewind: (growthId: number) => void }) {
+function HistoryDrawer({ detail, onClose, onRewind, onCancelNotification }: {
+  detail: SproutDetail; onClose: () => void; onRewind: (growthId: number) => void; onCancelNotification: (id: number) => void;
+}) {
   const day = (ts: number) => new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric' });
   const whisperStatus: Record<string, string> = {
     new: detail.sprout.growing ? 'Waiting to be worked on' : 'Waiting until growth is back on',
@@ -254,6 +258,22 @@ function HistoryDrawer({ detail, onClose, onRewind }: { detail: SproutDetail; on
         <h2>History</h2>
         <button className="icon-btn" aria-label="Close history" style={{ background: '#F0F3F0', width: 40, height: 40 }} onClick={onClose}><Close size={16} /></button>
       </header>
+      {detail.notifications.length > 0 && (
+        <section>
+          <h3>Coming up</h3>
+          {detail.notifications.map(n => (
+            <div key={n.id} className="entry">
+              <span className="mark" aria-hidden="true" />
+              <div className="body">
+                <span className="t">{n.title}</span>
+                {n.body && <span className="d">{n.body}</span>}
+                <span className="w">{day(n.dueAt)}, {timeOf(n.dueAt)}</span>
+              </div>
+              <button className="btn quiet small" style={{ alignSelf: 'flex-start' }} onClick={() => onCancelNotification(n.id)}>Cancel</button>
+            </div>
+          ))}
+        </section>
+      )}
       <section>
         <h3>What grew</h3>
         {detail.growth.length === 0 && <p className="muted" style={{ margin: 0, fontSize: 14 }}>Nothing yet.</p>}

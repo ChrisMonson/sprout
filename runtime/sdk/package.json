@@ -1,0 +1,9 @@
+{
+  "name": "@sprout/greenhouse",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "What the greenhouse offers a sprout's server code.",
+  "main": "index.js",
+  "types": "index.d.ts"
+}

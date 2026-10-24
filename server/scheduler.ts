@@ -13,6 +13,7 @@ import { runGate, formatGate } from './gate.ts';
 import { resetWork, ensureDevServer } from './sprouts.ts';
 import { dirty } from './git.ts';
 import { runTurn, type TurnKind, type TurnOutcome } from './agent/runner.ts';
+import { deliverDue } from './notifications.ts';
 import { brief, plantOpening, growOpening, observeOpening, collectAsks } from './agent/opening.ts';
 
 const TICK_MS = 3_000;
@@ -39,6 +40,7 @@ export function startScheduler(db: Db) {
 
 async function tick(db: Db) {
   const now = Date.now();
+  deliverDue(db, now);
   for (const row of q.sprouts(db)) {
     if (row.status !== 'ready') continue;
     await maybeApply(db, row.id, now).catch(err => console.error('[apply]', row.id, err));

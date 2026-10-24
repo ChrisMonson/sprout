@@ -4,6 +4,7 @@
   "type": "module",
   "description": "Shared dependencies for every sprout. Installed once into SPROUT_HOME by the greenhouse.",
   "dependencies": {
+    "@sprout/greenhouse": "file:./.runtime/sdk",
     "@types/node": "26.6.5",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",

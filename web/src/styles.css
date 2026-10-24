@@ -78,8 +78,8 @@ h1 { margin: 0; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; }
 .feel-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; }
 .feel-card { text-align: left; padding: 10px; background: var(--gh-surface); border: 2px solid var(--gh-line); border-radius: 18px; display: flex; flex-direction: column; gap: 10px; }
 .feel-card[aria-pressed='true'] { border-color: var(--gh-green); }
-.feel-preview { display: flex; flex-direction: column; gap: 10px; border-radius: 12px; padding: 16px; height: 156px; }
-.feel-preview .t { font-size: 22px; }
+.feel-preview { flex: 1; display: flex; flex-direction: column; gap: 10px; border-radius: 12px; padding: 16px; min-height: 156px; }
+.feel-preview .t { font-size: 20px; line-height: 1.2; overflow-wrap: anywhere; }
 .feel-preview .c { display: block; padding: 10px 12px; font-size: 13px; }
 .feel-preview .b { align-self: flex-start; padding: 7px 12px; font-size: 13px; font-weight: 600; }
 

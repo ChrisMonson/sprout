@@ -19,13 +19,15 @@ export interface SproutDetail {
   buds: Bud[];
   whispers: Whisper[];
   turns: { id: number; kind: string; status: string; summary: string | null; started_at: number }[];
+  notifications: { id: number; title: string; body: string | null; dueAt: number }[];
 }
 
 export type BusMessage =
   | { type: 'sprout'; sproutId: string }
   | { type: 'progress'; sproutId: string; turnId: number; line: string }
   | { type: 'turn'; sproutId: string; turnId: number; kind: string; status: string }
-  | { type: 'toast'; sproutId: string; text: string; undoGrowthId?: number };
+  | { type: 'toast'; sproutId: string; text: string; undoGrowthId?: number }
+  | { type: 'notification'; sproutId: string; title: string; body: string };
 
 async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`/api${path}`, {

@@ -61,6 +61,8 @@ export function sproutPlugin({ sproutId, dbPath, greenhouseUrl }) {
     configureServer(server) {
       const root = server.config.root;
       process.env.SPROUT_DB = dbPath;
+      process.env.SPROUT_ID = sproutId;
+      if (greenhouseUrl) process.env.SPROUT_GREENHOUSE_URL = greenhouseUrl;
 
       const migrate = () => {
         try {

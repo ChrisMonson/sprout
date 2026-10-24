@@ -8,6 +8,7 @@ import { nextQuestion, type Exchange } from './agent/questions.ts';
 import type { CredentialStatus } from './agent/credentials.ts';
 import { plant, isBusy, pausedUntil } from './scheduler.ts';
 import { rewind } from './apply.ts';
+import { schedule, cancel, cancelById, upcoming, type NotificationRequest } from './notifications.ts';
 
 const EVENT_KINDS = new Set(['click', 'input', 'submit', 'nav', 'rage', 'error', 'console_error', 'api_error']);
 const REPORT_KINDS = new Set(['server_error', 'build_error']);
@@ -95,6 +96,7 @@ export function createApi(db: Db, credentials: () => CredentialStatus | null) {
       buds: parse(db.prepare("SELECT id, ts, kind, text, why, suggestions, status FROM buds WHERE sprout_id = ? AND status = 'proposed' ORDER BY id").all(row.id) as Record<string, unknown>[], 'suggestions'),
       whispers: parse(db.prepare('SELECT id, ts, text, target, status FROM whispers WHERE sprout_id = ? ORDER BY id DESC LIMIT 30').all(row.id) as Record<string, unknown>[], 'target'),
       turns: db.prepare('SELECT id, kind, reason, started_at, ended_at, status, summary, cost_usd FROM turns WHERE sprout_id = ? ORDER BY id DESC LIMIT 10').all(row.id),
+      notifications: upcoming(db, row.id).map(n => ({ id: n.id, title: n.title, body: n.body, dueAt: n.due_at })),
     });
   });
 
@@ -131,6 +133,27 @@ export function createApi(db: Db, credentials: () => CredentialStatus | null) {
       db.prepare('INSERT INTO events (sprout_id, ts, kind, detail) VALUES (?, ?, ?, ?)').run(row.id, Date.now(), kind, JSON.stringify(detail).slice(0, 2000));
     }
     return c.json({ ok: true });
+  });
+
+  // From a sprout's own server code, via @sprout/greenhouse.
+  app.post('/sprouts/:id/notify', async c => {
+    const row = sproutOr404(c.req.param('id'));
+    const req = await c.req.json<NotificationRequest>();
+    try {
+      const id = schedule(db, row.id, req);
+      bus.send({ type: 'sprout', sproutId: row.id });
+      return c.json({ id });
+    } catch (err) {
+      throw new HttpError(400, (err as Error).message);
+    }
+  });
+
+  app.post('/sprouts/:id/notify/cancel', async c => {
+    const row = sproutOr404(c.req.param('id'));
+    const { key, id } = await c.req.json<{ key?: string; id?: number }>();
+    const cancelled = key ? cancel(db, row.id, key) : id ? cancelById(db, row.id, id) : 0;
+    bus.send({ type: 'sprout', sproutId: row.id });
+    return c.json({ cancelled });
   });
 
   app.post('/sprouts/:id/whisper', async c => {
