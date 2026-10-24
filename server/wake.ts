@@ -12,7 +12,7 @@ export interface WakeInput {
   growing: boolean;
   pausedUntil: number;
   busy: boolean;
-  /** whispers, accepted buds and answered questions not yet acted on */
+  /** whispers, accepted buds, answered questions and renames not yet acted on */
   asks: number;
   /** a rollback the agent hasn't seen yet */
   rollbackNote: boolean;

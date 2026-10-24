@@ -56,17 +56,32 @@ export function addNote(id: string, note: string, wake = false) {
   if (wake) writeFileSync(wakeFlag(id), '');
 }
 
+/** A note the person caused directly (a rename): acted on like a whisper, even while growth is off. */
+export function addRequestNote(id: string, note: string) {
+  addNote(id, note);
+  writeFileSync(requestFlag(id), '');
+}
+
 export function hasWakeNote(id: string): boolean {
   return existsSync(wakeFlag(id));
+}
+
+export function hasRequestNote(id: string): boolean {
+  return existsSync(requestFlag(id));
 }
 
 export function takeNotes(id: string): string {
   const text = read(sproutPaths(id).notes);
   if (text) writeFileSync(sproutPaths(id).notes, '');
   rmSync(wakeFlag(id), { force: true });
+  rmSync(requestFlag(id), { force: true });
   return text.trim();
 }
 
 function wakeFlag(id: string) {
   return join(sproutPaths(id).memory, 'wake');
+}
+
+function requestFlag(id: string) {
+  return join(sproutPaths(id).memory, 'request');
 }

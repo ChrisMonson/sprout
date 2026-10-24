@@ -11,7 +11,7 @@ import { rewind } from './apply.ts';
 import { removeSprout, restoreSprout, deleteForever, listRemoved } from './remove.ts';
 import { exportSprout, importSprout } from './transfer.ts';
 import { platform } from './platform.ts';
-import { addNote } from './memory.ts';
+import { addNote, addRequestNote } from './memory.ts';
 import { getSettings, updateSettings, claudeEnabled, PRESETS, STEPS } from './settings.ts';
 import { listModels, knownModels, resolveStep } from './agent/models.ts';
 import { schedule, cancel, cancelById, upcoming, type NotificationRequest } from './notifications.ts';
@@ -247,8 +247,8 @@ export function createApi(db: Db, host: Host) {
     if (name.length > 60) throw new HttpError(400, 'Keep the name under 60 characters.');
     if (seed.length > 500) throw new HttpError(400, 'Keep the description under 500 characters.');
     if (name !== row.name) {
-      // The tool's own screen shows its name too; the agent brings that in line next time it grows.
-      addNote(row.id, `The person renamed the tool from "${row.name}" to "${name}". Update the name shown in the tool to match, if it shows one.`);
+      // The tool's own screen shows its name too, so the agent wakes to bring it in line (even with growth off).
+      addRequestNote(row.id, `The person renamed the tool from "${row.name}" to "${name}". Update the name shown in the tool to match, if it shows one.`);
     }
     if (seed !== row.seed) addNote(row.id, `The person changed how they describe the tool to: "${seed}".`);
     q.update(db, row.id, { name, seed });

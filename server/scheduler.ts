@@ -7,7 +7,7 @@ import { bus } from './bus.ts';
 import { sproutPaths } from './paths.ts';
 import { nextTurn } from './wake.ts';
 import { errorsSince, usageEventsSince } from './friction.ts';
-import { hasWakeNote, appendJournal } from './memory.ts';
+import { hasWakeNote, hasRequestNote, appendJournal } from './memory.ts';
 import { maybeApply, watchdog, commitWork, queueApply, hasPending } from './apply.ts';
 import { runGate, formatGate } from './gate.ts';
 import { resetWork, ensureDevServer } from './sprouts.ts';
@@ -75,7 +75,7 @@ function decide(db: Db, row: SproutRow, now: number) {
     growing: !!row.growing,
     pausedUntil: Math.max(row.paused_until, globalPauseUntil, backoffUntil(row.id)),
     busy: busy.has(row.id) || hasPending(db, row.id),
-    asks: asks.whispers.length + asks.buds.length + asks.answers.length,
+    asks: asks.whispers.length + asks.buds.length + asks.answers.length + (hasRequestNote(row.id) ? 1 : 0),
     rollbackNote: hasWakeNote(row.id),
     errorsSinceGrowMark: errorsSince(db, row.id, row.grow_mark),
     lastGrowAt: lastGrowAt.get(row.id) ?? 0,
