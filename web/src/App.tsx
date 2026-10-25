@@ -78,10 +78,11 @@ function Page({ route, state, refresh }: { route: string; state: AppState; refre
   const sproutMatch = /^\/s\/([\w-]+)(\/full)?/.exec(route);
   if (sproutMatch) {
     const id = sproutMatch[1];
-    return <SproutView key={id} id={id} full={!!sproutMatch[2]} summary={state.sprouts.find(s => s.id === id)} />;
+    return <SproutView key={id} id={id} full={!!sproutMatch[2]} summary={state.sprouts.find(s => s.id === id)} claude={claudeReady(state)} />;
   }
   if (route === '/settings') return <SettingsPage state={state} onChange={refresh} />;
   if (route === '/new') {
+    if (!claudeReady(state)) return <GrowNeedsClaude state={state} onChange={refresh} />;
     return <NewSprout feels={state.feels} setup={<SetupBanners state={state} onChange={refresh} />} canGoHome claude={state.claudeEnabled !== false} />;
   }
   return <Home state={state} onRefresh={refresh} />;
@@ -154,11 +155,11 @@ function Home({ state, onRefresh }: { state: AppState; onRefresh: () => void }) 
                 <span className="n" style={s.id === transitionSprout ? { viewTransitionName: `sprout-name-${s.id}` } : undefined}>{s.name || 'Unnamed sprout'}</span>
               </span>
               <span className="s">{s.seed}</span>
-              <span className={`status ${statusGlyph(s).tone}`}>{statusGlyph(s).icon}{statusText(s)}</span>
+              {(claudeReady(state) || s.busy || s.status !== 'ready') && <span className={`status ${statusGlyph(s).tone}`}>{statusGlyph(s).icon}{statusText(s)}</span>}
             </a>
           ))}
           {Array.from({ length: emptyCells(sprouts.length) }, (_, i) => i === 0
-            ? <a key="plant" className="cell-empty plant" href="#/new"><span aria-hidden="true">+</span>Grow something new</a>
+            ? <a key="plant" className="cell-empty plant" href="#/new"><span aria-hidden="true">+</span>Grow something new{!claudeReady(state) && <small>Needs Claude</small>}</a>
             : <span key={i} className="cell-empty extra" aria-hidden="true" />)}
         </div>
         {state.removed.length > 0 && (
@@ -201,6 +202,63 @@ function RemovedRow({ sprout }: { sprout: AppState['removed'][number] }) {
 }
 
 /** Things Sprout needs before it can grow anything: git, and a Claude sign-in. */
+/**
+ * Can Sprout use Claude right now: switched on and signed in? Growing, whispers
+ * and suggestions only show when it can. While the first check is still
+ * running, assume yes, so a working setup doesn't flicker.
+ */
+export function claudeReady(state: AppState) {
+  return state.claudeEnabled !== false && (!state.credentials || state.credentials.ok);
+}
+
+/**
+ * What Grow shows when Claude can't be used: why growing needs it, and the
+ * one step that would make it work. Once it works, this becomes the Grow page.
+ */
+function GrowNeedsClaude({ state, onChange }: { state: AppState; onChange: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const turnOn = async () => {
+    setBusy(true);
+    await api.post('/settings', { claude: { enabled: true } }).catch(() => {});
+    setBusy(false);
+    onChange();
+  };
+  const off = state.claudeEnabled === false;
+  const usingKey = state.signIn === 'api-key';
+  return (
+    <div className="app">
+      <main className="center">
+        <div className="column" style={{ maxWidth: 560, alignItems: 'center', gap: 20, textAlign: 'center' }}>
+          <span style={{ color: 'var(--gh-green)' }}><Leaf size={44} /></span>
+          <h1 className="title-xl">Growing uses Claude</h1>
+          <p className="lede">Sprout grows a tool by having Claude build it from what you describe, then keep improving it as you use it. Your sprouts keep working without Claude; it’s only needed to plant and grow them.</p>
+          {off ? (
+            <>
+              <p className="muted" style={{ margin: 0 }}>Claude is turned off in Settings.</p>
+              <button className="btn" onClick={turnOn} disabled={busy}>{busy ? 'Turning on…' : 'Turn on Claude'}</button>
+            </>
+          ) : usingKey ? (
+            <>
+              <p className="muted" style={{ margin: 0 }}>{state.credentials?.message}</p>
+              <a className="btn" href="#/settings">Open Settings</a>
+            </>
+          ) : (
+            <>
+              <p className="muted" style={{ margin: 0 }}>Sign in to Claude Code with your Claude plan, or use an Anthropic API key instead (billed per use).</p>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
+                {state.credentials?.signedOut !== false && <button className="btn" onClick={() => api.post('/sign-in')}>Sign in to Claude Code</button>}
+                <a className="btn quiet" href="#/settings">Use an API key</a>
+              </div>
+              <p className="muted small" style={{ margin: 0 }}>Signing in opens Terminal. Sprout notices when you’re done.</p>
+            </>
+          )}
+          <a href="#/">Back to your sprouts</a>
+        </div>
+      </main>
+    </div>
+  );
+}
+
 /**
  * What Sprout needs set up. Using Sprout without Claude is normal (your tools
  * keep working), so on the home page (quiet) that's at most a calm note; the

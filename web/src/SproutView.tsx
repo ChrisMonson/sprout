@@ -5,7 +5,8 @@ import { go } from './App.tsx';
 
 interface Toast { text: string; undoGrowthId?: number }
 
-export default function SproutView({ id, full, summary }: { id: string; full: boolean; summary?: AppState['sprouts'][number] }) {
+/** claude: whether Claude can be used now; without it, growing, whispers and suggestions are hidden. */
+export default function SproutView({ id, full, summary, claude }: { id: string; full: boolean; summary?: AppState['sprouts'][number]; claude: boolean }) {
   const [loaded, setDetail] = useState<SproutDetail | null>(null);
   // Until the full detail arrives, draw the view from the home page's summary
   // so it appears at once (and the tray cell has a frame to grow into).
@@ -121,17 +122,19 @@ export default function SproutView({ id, full, summary }: { id: string; full: bo
         <a className="brand back" href="#/" aria-label="Back to your sprouts" title="Back to your sprouts"><ChevronLeft /><Leaf />Sprout</a>
         <span aria-hidden="true" style={{ color: 'var(--gh-dot-idle)' }}>/</span>
         <span style={{ fontWeight: 600, viewTransitionName: `sprout-name-${id}` }}>{sprout.name || 'Your tool'}</span>
-        <span className="status" role="status">
-          <i className={sprout.busy ? 'busy' : sprout.growing ? 'on' : ''} />
-          {sprout.busy ? 'Working…' : sprout.pending ? 'New growth waiting for a pause' : sprout.growing ? 'Growing' : 'Resting'}
-        </span>
+        {(claude || sprout.busy || sprout.pending) && (
+          <span className="status" role="status">
+            <i className={sprout.busy ? 'busy' : sprout.growing ? 'on' : ''} />
+            {sprout.busy ? 'Working…' : sprout.pending ? 'New growth waiting for a pause' : sprout.growing ? 'Growing' : 'Resting'}
+          </span>
+        )}
         <div className="right">
-          <button className="switch" role="switch" aria-checked={sprout.growing} onClick={async () => {
+          {claude && <button className="switch" role="switch" aria-checked={sprout.growing} onClick={async () => {
             await api.post(`/sprouts/${id}/growing`, { on: !sprout.growing });
             showToast({ text: sprout.growing ? `Growth is resting. ${sprout.name || 'Your tool'} won’t change on its own, but Sprout will still do what you ask.` : 'Growing again.' });
           }}>
             <span className="track" aria-hidden="true" />Growth
-          </button>
+          </button>}
           <button className="pill-btn" aria-expanded={drawer === 'history'} onClick={() => toggleDrawer('history')}><History />History</button>
           <button className="pill-btn icon-only" aria-expanded={drawer === 'settings'} aria-label="Settings" title="Settings" onClick={() => toggleDrawer('settings')}><Cog /></button>
           <button className="pill-btn" onClick={enterFull} aria-label="Hide Sprout and fill the window" title="Hide Sprout and fill the window"><Expand /></button>
@@ -142,7 +145,7 @@ export default function SproutView({ id, full, summary }: { id: string; full: bo
       <div className="stage">
         {startError
           ? <p className="error" role="alert">{startError}</p>
-          : <ToolFrame id={id} url={url} name={sprout.name} growing={sprout.growing} full={full} onSent={text => showToast({ text })} />}
+          : <ToolFrame id={id} url={url} name={sprout.name} growing={sprout.growing} full={full} whisper={claude} onSent={text => showToast({ text })} />}
 
         {sprout.busy && workingOpen && (
           <aside className="card-float working" aria-live="polite">
@@ -154,7 +157,7 @@ export default function SproutView({ id, full, summary }: { id: string; full: bo
             <button className="fold" aria-label="Hide" title="Hide" onClick={() => { clearTimeout(workingTimer.current); setWorkingOpen(false); }}><Close size={12} /></button>
           </aside>
         )}
-        {!sprout.busy && bud && !foldedBuds.includes(bud.id) && (
+        {claude && !sprout.busy && bud && !foldedBuds.includes(bud.id) && (
           <BudCard key={bud.id} id={id} bud={bud} onDone={refresh} onFold={() => setFoldedBuds(f => [...f, bud.id])} />
         )}
         <div className="pills">
@@ -164,7 +167,7 @@ export default function SproutView({ id, full, summary }: { id: string; full: bo
               <span className="pill-text">{working}</span>
             </button>
           )}
-          {!sprout.busy && bud && foldedBuds.includes(bud.id) && (
+          {claude && !sprout.busy && bud && foldedBuds.includes(bud.id) && (
             <button className="pill" onClick={() => setFoldedBuds(f => f.filter(x => x !== bud.id))}>
               {bud.kind === 'question' ? <Leaf size={14} /> : <BudIcon size={14} />}
               <span className="pill-text">{bud.kind === 'question' ? 'Sprout has a question' : 'Sprout has an idea'}</span>
@@ -207,7 +210,7 @@ function Sprouting({ name, lines, planting }: { name: string; lines: string[]; p
 }
 
 /** The live tool, plus the whisper bar that talks to the observer inside it. */
-function ToolFrame({ id, url, name, growing, full, onSent }: { id: string; url: string | null; name: string; growing: boolean; full: boolean; onSent: (text: string) => void }) {
+function ToolFrame({ id, url, name, growing, full, whisper, onSent }: { id: string; url: string | null; name: string; growing: boolean; full: boolean; whisper: boolean; onSent: (text: string) => void }) {
   const frame = useRef<HTMLIFrameElement>(null);
   const [pointing, setPointing] = useState(false);
   const [target, setTarget] = useState<Target | null>(null);
@@ -266,7 +269,7 @@ function ToolFrame({ id, url, name, growing, full, onSent }: { id: string; url: 
           ? <iframe ref={frame} className="frame" src={url} title={name || 'Your tool'} />
           : <div className="frame placeholder" aria-label={`Opening ${name || 'your tool'}`} />}
       </div>
-      {folded ? (
+      {!whisper ? null : folded ? (
         <button className="whisper-fab" onClick={() => { setOpen(true); setTimeout(() => input.current?.focus(), 0); }} aria-label="Tell Sprout something" title="Tell Sprout something"><Leaf size={22} /></button>
       ) : (
       <div className="whisper-wrap">

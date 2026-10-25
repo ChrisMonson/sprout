@@ -336,6 +336,8 @@ select.text-field { appearance: auto; padding: 8px 10px; }
 .cell-empty { min-height: 140px; border-radius: 14px; background: var(--pulp), var(--tray-well); box-shadow: inset 0 3px 6px rgba(90, 65, 35, 0.12); }
 .cell-empty.plant { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: var(--tray-ink); font-size: 14px; font-weight: 500; }
 .cell-empty.plant span { font-size: 26px; line-height: 1; font-weight: 300; }
+a.btn { text-decoration: none; display: inline-flex; align-items: center; }
+.cell-empty.plant small { font-size: 12px; font-weight: 400; color: var(--gh-muted); }
 .welcome { display: flex; flex-direction: column; gap: 6px; }
 .welcome p { margin: 0 0 6px; max-width: 560px; line-height: 1.5; }
 .setup-note { margin: 0; font-size: 14px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; }

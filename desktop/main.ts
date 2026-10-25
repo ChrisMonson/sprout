@@ -247,8 +247,12 @@ function createTray() {
 async function refreshTray() {
   if (!tray) return;
   let sprouts: SproutSummary[] = [];
+  // Growing all or none only means something when Claude can be used.
+  let claude = true;
   try {
-    sprouts = ((await (await fetch(`${base}/api/state`)).json()) as { sprouts: SproutSummary[] }).sprouts;
+    const state = (await (await fetch(`${base}/api/state`)).json()) as { sprouts: SproutSummary[]; claudeEnabled?: boolean; credentials?: { ok: boolean } | null };
+    sprouts = state.sprouts;
+    claude = state.claudeEnabled !== false && (!state.credentials || state.credentials.ok);
   } catch { /* the greenhouse may be busy starting */ }
   const ready = sprouts.filter(s => s.status === 'ready');
   const anyGrowing = ready.some(s => s.growing);
@@ -261,12 +265,12 @@ async function refreshTray() {
     { label: 'Open Sprout', click: () => showWindow() },
     { type: 'separator' },
     ...(sprouts.length
-      ? sprouts.map((s, i) => ({ label: s.name || 'Unnamed sprout', icon: menuIcons[i], sublabel: s.status === 'ready' ? (s.growing ? 'Growing' : 'Resting') : undefined, click: () => openSprout(s.id) }))
+      ? sprouts.map((s, i) => ({ label: s.name || 'Unnamed sprout', icon: menuIcons[i], sublabel: claude && s.status === 'ready' ? (s.growing ? 'Growing' : 'Resting') : undefined, click: () => openSprout(s.id) }))
       : [{ label: 'No sprouts yet', enabled: false }]),
     { type: 'separator' },
-    ready.length
-      ? { label: anyGrowing ? 'Rest all sprouts' : 'Grow all sprouts', click: () => void setGrowing(!anyGrowing) }
-      : { label: 'Rest all sprouts', enabled: false },
+    ...(!claude ? [] : ready.length
+      ? [{ label: anyGrowing ? 'Rest all sprouts' : 'Grow all sprouts', click: () => void setGrowing(!anyGrowing) }]
+      : [{ label: 'Rest all sprouts', enabled: false }]),
     {
       label: 'Open at login', type: 'checkbox', checked: app.getLoginItemSettings().openAtLogin,
       click: item => app.setLoginItemSettings({ openAtLogin: item.checked }),
