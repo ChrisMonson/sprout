@@ -24,6 +24,9 @@ export function agentEnv(extra: Record<string, string> = {}): Record<string, str
   return { ...env, ...extra };
 }
 
+/** Sprout uses Claude Code's sign-in (the `claude` command), which the Claude app doesn't share. */
+const SIGNED_OUT = 'Sprout uses Claude Code’s sign-in, and it has expired or isn’t set up.';
+
 export interface CredentialStatus { ok: boolean; message: string; checkedAt: number; signedOut?: boolean }
 
 export async function checkCredentials(): Promise<CredentialStatus> {
@@ -45,12 +48,12 @@ export async function checkCredentials(): Promise<CredentialStatus> {
     for await (const msg of q) {
       if (msg.type === 'assistant' && msg.error) {
         const signedOut = ['authentication_failed', 'oauth_org_not_allowed', 'account_on_hold', 'verification_required'].includes(msg.error);
-        return { ok: false, checkedAt, signedOut, message: signedOut ? 'Sprout needs you to sign in to Claude.' : `Claude is unavailable right now (${msg.error}).` };
+        return { ok: false, checkedAt, signedOut, message: signedOut ? SIGNED_OUT : `Claude is unavailable right now (${msg.error}).` };
       }
       if (msg.type === 'result') {
         return msg.subtype === 'success' && !msg.is_error
           ? { ok: true, checkedAt, message: 'Signed in.' }
-          : { ok: false, checkedAt, signedOut: true, message: 'Could not reach Claude. Sprout may need you to sign in.' };
+          : { ok: false, checkedAt, signedOut: true, message: `Could not reach Claude. ${SIGNED_OUT}` };
       }
     }
     return { ok: false, checkedAt, message: 'Claude did not answer.' };
@@ -59,10 +62,10 @@ export async function checkCredentials(): Promise<CredentialStatus> {
   }
 }
 
-/** Opens Terminal running Claude Code, where the person can /login. */
+/** Opens Terminal on Claude Code's own sign-in (`claude auth login`). */
 export function openSignIn() {
   const claude = claudeExecutable();
-  const command = claude ? `'${claude.replace(/'/g, `'\\''`)}'` : 'claude';
+  const command = `${claude ? `'${claude.replace(/'/g, `'\\''`)}'` : 'claude'} auth login`;
   const script = [`tell application "Terminal" to do script ${JSON.stringify(command)}`, 'tell application "Terminal" to activate'];
   execFile('osascript', script.flatMap(line => ['-e', line]), err => { if (err) console.error('[sign-in]', err.message); });
 }

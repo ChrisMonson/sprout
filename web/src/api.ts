@@ -32,7 +32,8 @@ export type BusMessage =
   | { type: 'turn'; sproutId: string; turnId: number; kind: string; status: string }
   | { type: 'toast'; sproutId: string; text: string; undoGrowthId?: number }
   | { type: 'notification'; sproutId: string; title: string; body: string }
-  | { type: 'harvest'; sproutId: string };
+  | { type: 'harvest'; sproutId: string }
+  | { type: 'setup' };
 
 async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`/api${path}`, {

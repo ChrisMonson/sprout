@@ -58,7 +58,7 @@ export default function SproutView({ id, full, summary }: { id: string; full: bo
   };
 
   useStream(msg => {
-    if (msg.sproutId !== id) return;
+    if (!('sproutId' in msg) || msg.sproutId !== id) return;
     if (msg.type === 'sprout') refresh();
     if (msg.type === 'progress') setLines(l => [...l, msg.line].slice(-12));
     if (msg.type === 'turn') {

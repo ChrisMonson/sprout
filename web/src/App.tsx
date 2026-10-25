@@ -67,7 +67,7 @@ export default function App() {
     api.get<AppState>('/state').then(s => setState({ ...s, sprouts: s.sprouts ?? [], removed: s.removed ?? [] })).catch(() => {});
   }, []);
   useEffect(refresh, [refresh]);
-  useStream(msg => { if (msg.type === 'sprout' || msg.type === 'turn') refresh(); });
+  useStream(msg => { if (msg.type === 'sprout' || msg.type === 'turn' || msg.type === 'setup') refresh(); });
   useAppearance(state?.appearance ?? 'system');
 
   if (!state) return <div className="app" />;
@@ -229,14 +229,14 @@ function SetupBanners({ state, onChange, quiet = false }: { state: AppState; onC
       )}
       {signedOut && quiet && (
         <p className="setup-note muted" role="status">
-          Sign in to Claude to grow new sprouts and keep them growing.
+          Sign in to Claude Code to grow new sprouts and keep them growing.
           {state.credentials!.signedOut && <button className="link-btn" onClick={() => api.post('/sign-in')}>Sign in</button>}
           <button className="link-btn" onClick={recheck} disabled={checking}>{checking ? 'Checking…' : 'I’ve signed in'}</button>
         </p>
       )}
       {signedOut && !quiet && (
         <div className="banner" role="status" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
-          <span style={{ flex: '1 1 240px' }}>{state.credentials!.message}{state.credentials!.signedOut ? ' A Terminal window will open; type /login there and follow the steps.' : ''}</span>
+          <span style={{ flex: '1 1 240px' }}>{state.credentials!.message}{state.credentials!.signedOut ? ' Sign in opens Terminal on Claude Code’s sign-in; Sprout notices when you’re done.' : ''}</span>
           {state.credentials!.signedOut && <button className="btn small" onClick={() => api.post('/sign-in')}>Sign in</button>}
           <button className="btn quiet small" onClick={recheck} disabled={checking}>{checking ? 'Checking…' : 'I’ve signed in'}</button>
         </div>

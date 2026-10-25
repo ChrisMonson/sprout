@@ -15,6 +15,7 @@ import { drawMissingIcons } from './icons.ts';
 import { stopAll } from './sprouts.ts';
 import { acquireLock, releaseLock } from './lock.ts';
 import { checkCredentials, openSignIn, type CredentialStatus } from './agent/credentials.ts';
+import { bus } from './bus.ts';
 import { listModels } from './agent/models.ts';
 import { claudeEnabled, getSettings } from './settings.ts';
 import { platform } from './platform.ts';
@@ -50,7 +51,13 @@ export async function startGreenhouse(options: GreenhouseOptions): Promise<Green
   db.prepare("UPDATE sprouts SET status = 'failed' WHERE status = 'planting'").run();
 
   let credentials: CredentialStatus | null = null;
+  // While signed out, keep checking so signing in (in Terminal) shows up by
+  // itself; often for a few minutes after Sign in is pressed.
+  let watching: ReturnType<typeof setTimeout> | undefined;
+  let eagerUntil = 0;
   const recheck = async () => {
+    clearTimeout(watching);
+    const before = credentials?.ok;
     // With Claude off, Sprout never contacts it, not even to check sign-in.
     if (!claudeEnabled(db)) {
       credentials = null;
@@ -58,13 +65,22 @@ export async function startGreenhouse(options: GreenhouseOptions): Promise<Green
       return { ok: false, checkedAt: Date.now(), message: 'Claude is turned off in Settings.' };
     }
     credentials = await checkCredentials();
-    log(credentials.ok ? 'Claude: signed in.' : `Claude: ${credentials.message}`);
+    if (credentials.ok !== before) {
+      log(credentials.ok ? 'Claude: signed in.' : `Claude: ${credentials.message}`);
+      bus.send({ type: 'setup' });
+    }
     if (credentials.ok) void listModels(true).catch(() => {});
+    else if (credentials.signedOut) watching = setTimeout(() => void recheck(), Date.now() < eagerUntil ? 5_000 : 20_000);
     return credentials;
   };
   void recheck();
+  const signIn = () => {
+    openSignIn();
+    eagerUntil = Date.now() + 5 * 60_000;
+    watching = setTimeout(() => void recheck(), 5_000);
+  };
 
-  const api = createApi(db, { credentials: () => credentials, recheck, signIn: openSignIn, git });
+  const api = createApi(db, { credentials: () => credentials, recheck, signIn, git });
   const apiListener = getRequestListener(api.fetch);
 
   const server = createServer();
