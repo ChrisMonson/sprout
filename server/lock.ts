@@ -1,7 +1,8 @@
 // One greenhouse per SPROUT_HOME. Two would run agents against the same
 // sprouts and database at once, e.g. `npm run dev` while the app is open.
 
-import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
 
 export class AlreadyRunning extends Error {
   constructor(public pid: number) {
@@ -24,6 +25,7 @@ export function acquireLock(file: string, pid = process.pid) {
     const holder = Number(readFileSync(file, 'utf8').trim());
     if (holder && holder !== pid && alive(holder)) throw new AlreadyRunning(holder);
   }
+  mkdirSync(dirname(file), { recursive: true }); // a brand-new Sprout folder
   writeFileSync(file, String(pid));
 }
 

@@ -15,6 +15,13 @@ const { paths } = await import('../server/paths.ts');
 describe('greenhouse lock', () => {
   const file = join(base, 'greenhouse.lock');
 
+  it('starts in a Sprout folder that doesn’t exist yet', () => {
+    const fresh = join(base, 'new-home', 'greenhouse.lock');
+    acquireLock(fresh, process.pid);
+    expect(existsSync(fresh)).toBe(true);
+    releaseLock(fresh, process.pid);
+  });
+
   it('refuses a second greenhouse while the first is alive', () => {
     acquireLock(file, process.pid);
     expect(() => acquireLock(file, process.pid + 1)).toThrow(AlreadyRunning);

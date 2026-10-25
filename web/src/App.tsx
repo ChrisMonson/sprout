@@ -81,9 +81,8 @@ function Page({ route, state, refresh }: { route: string; state: AppState; refre
     return <SproutView key={id} id={id} full={!!sproutMatch[2]} summary={state.sprouts.find(s => s.id === id)} />;
   }
   if (route === '/settings') return <SettingsPage state={state} onChange={refresh} />;
-  const nothingYet = state.sprouts.length === 0 && state.removed.length === 0;
-  if (route === '/new' || nothingYet) {
-    return <NewSprout feels={state.feels} setup={<SetupBanners state={state} onChange={refresh} />} canGoHome={!nothingYet} claude={state.claudeEnabled !== false} />;
+  if (route === '/new') {
+    return <NewSprout feels={state.feels} setup={<SetupBanners state={state} onChange={refresh} />} canGoHome claude={state.claudeEnabled !== false} />;
   }
   return <Home state={state} onRefresh={refresh} />;
 }
@@ -130,12 +129,17 @@ function Home({ state, onRefresh }: { state: AppState; onRefresh: () => void }) 
             <a className="pill-btn icon-only" href="#/settings" aria-label="Settings" title="Settings"><Cog /></a>
           </div>
         </div>
-        <SetupBanners state={state} onChange={onRefresh} />
+        <SetupBanners state={state} onChange={onRefresh} quiet />
         {importError && <div className="banner" role="alert">{importError}</div>}
         {state.pausedUntil > Date.now() && state.pausedUntil - Date.now() < 7 * 24 * 3600_000 && (
           <div className="banner" role="status">Sprout is resting until {new Date(state.pausedUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} (Claude usage limit). Your tools still work.</div>
         )}
-        <h1 className="title-l">Your sprouts</h1>
+        {sprouts.length === 0 ? (
+          <div className="welcome">
+            <h1 className="title-l">Welcome to Sprout</h1>
+            <p className="muted">Grow a small tool by describing what you want, or import sprouts exported from Sprout. Your sprouts keep working on their own; Claude is only used to grow them.</p>
+          </div>
+        ) : <h1 className="title-l">Your sprouts</h1>}
         {/* A nod to a seed-starting tray: each sprout sits in a cell, and the
             row is filled out with empty cells, the first of which plants a new one. */}
         <div className="sprout-list tray" ref={tray} onDragOver={drag.over} onDrop={drag.drop}>
@@ -197,7 +201,12 @@ function RemovedRow({ sprout }: { sprout: AppState['removed'][number] }) {
 }
 
 /** Things Sprout needs before it can grow anything: git, and a Claude sign-in. */
-function SetupBanners({ state, onChange }: { state: AppState; onChange: () => void }) {
+/**
+ * What Sprout needs set up. Using Sprout without Claude is normal (your tools
+ * keep working), so on the home page (quiet) that's at most a calm note; the
+ * Grow page, where Claude is needed, says it plainly.
+ */
+function SetupBanners({ state, onChange, quiet = false }: { state: AppState; onChange: () => void; quiet?: boolean }) {
   const [checking, setChecking] = useState(false);
   const recheck = async () => {
     setChecking(true);
@@ -208,9 +217,9 @@ function SetupBanners({ state, onChange }: { state: AppState; onChange: () => vo
   const signedOut = state.claudeEnabled !== false && state.credentials && !state.credentials.ok;
   return (
     <>
-      {state.claudeEnabled === false && (
+      {state.claudeEnabled === false && !quiet && (
         <div className="banner" role="status">
-          Claude is off, so nothing grows and new sprouts can’t be planted. Your tools keep working. <a href="#/settings">Turn it on in Settings</a>.
+          Growing a new sprout uses Claude, which is turned off. <a href="#/settings">Turn it on in Settings</a> to plant one.
         </div>
       )}
       {state.git === false && (
@@ -218,7 +227,14 @@ function SetupBanners({ state, onChange }: { state: AppState; onChange: () => vo
           Sprout needs Apple’s Command Line Tools to keep track of changes. Open Terminal, run <code>xcode-select --install</code>, then restart Sprout.
         </div>
       )}
-      {signedOut && (
+      {signedOut && quiet && (
+        <p className="setup-note muted" role="status">
+          Sign in to Claude to grow new sprouts and keep them growing.
+          {state.credentials!.signedOut && <button className="link-btn" onClick={() => api.post('/sign-in')}>Sign in</button>}
+          <button className="link-btn" onClick={recheck} disabled={checking}>{checking ? 'Checking…' : 'I’ve signed in'}</button>
+        </p>
+      )}
+      {signedOut && !quiet && (
         <div className="banner" role="status" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
           <span style={{ flex: '1 1 240px' }}>{state.credentials!.message}{state.credentials!.signedOut ? ' A Terminal window will open; type /login there and follow the steps.' : ''}</span>
           {state.credentials!.signedOut && <button className="btn small" onClick={() => api.post('/sign-in')}>Sign in</button>}
