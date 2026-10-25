@@ -4,6 +4,7 @@ import { openDb } from '../server/db.ts';
 import { getSettings, updateSettings, resetSettingsCache, PRESETS } from '../server/settings.ts';
 import { toChoices, resolveStep } from '../server/agent/models.ts';
 import { noteOutcome, backoffUntil, BACKOFF_MS } from '../server/scheduler.ts';
+import { checkKeyShape, keyHint } from '../server/agent/apikey.ts';
 
 const listed: ModelInfo[] = [
   { value: 'default', resolvedModel: 'claude-opus-5-5', displayName: 'Default (recommended)', description: '' },
@@ -43,6 +44,21 @@ describe('greenhouse settings', () => {
     expect(updateSettings(db, { appearance: 'dark' }).appearance).toBe('dark');
     expect(() => updateSettings(db, { appearance: 'purple' as 'dark' })).toThrow();
     expect(getSettings(db).appearance).toBe('dark');
+  });
+
+  it('signs in with Claude Code by default, and accepts only Claude Code or an API key', () => {
+    const db = openDb(':memory:');
+    expect(getSettings(db).claude).toEqual({ enabled: true, signIn: 'claude-code', keyHint: null });
+    expect(updateSettings(db, { claude: { signIn: 'api-key', keyHint: 'wxyz' } }).claude).toEqual({ enabled: true, signIn: 'api-key', keyHint: 'wxyz' });
+    expect(() => updateSettings(db, { claude: { signIn: 'password' as 'api-key' } })).toThrow();
+  });
+
+  it('only takes something shaped like an Anthropic API key, and shows its last four characters', () => {
+    const key = `sk-ant-api03-${'a'.repeat(40)}wxyz`;
+    expect(checkKeyShape(`  ${key}\n`)).toBe(key);
+    expect(keyHint(key)).toBe('wxyz');
+    expect(() => checkKeyShape('hunter2')).toThrow(/sk-ant-/);
+    expect(() => checkKeyShape('sk-ant-has spaces in it and more')).toThrow();
   });
 
   it('refuses an empty model', () => {

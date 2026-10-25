@@ -227,7 +227,12 @@ function SetupBanners({ state, onChange, quiet = false }: { state: AppState; onC
           Sprout needs Apple’s Command Line Tools to keep track of changes. Open Terminal, run <code>xcode-select --install</code>, then restart Sprout.
         </div>
       )}
-      {signedOut && quiet && (
+      {signedOut && quiet && state.signIn === 'api-key' && (
+        <p className="setup-note muted" role="status">
+          {state.credentials!.message} <a className="link-btn" href="#/settings">Settings</a>
+        </p>
+      )}
+      {signedOut && quiet && state.signIn !== 'api-key' && (
         <p className="setup-note muted" role="status">
           Sign in to Claude Code to grow new sprouts and keep them growing.
           {state.credentials!.signedOut && <button className="link-btn" onClick={() => api.post('/sign-in')}>Sign in</button>}
@@ -238,6 +243,7 @@ function SetupBanners({ state, onChange, quiet = false }: { state: AppState; onC
         <div className="banner" role="status" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
           <span style={{ flex: '1 1 240px' }}>{state.credentials!.message}{state.credentials!.signedOut ? ' Sign in opens Terminal on Claude Code’s sign-in; Sprout notices when you’re done.' : ''}</span>
           {state.credentials!.signedOut && <button className="btn small" onClick={() => api.post('/sign-in')}>Sign in</button>}
+          {state.signIn === 'api-key' && <a className="btn small" href="#/settings">Settings</a>}
           <button className="btn quiet small" onClick={recheck} disabled={checking}>{checking ? 'Checking…' : 'I’ve signed in'}</button>
         </div>
       )}

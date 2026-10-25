@@ -11,13 +11,20 @@ export const STEPS: Step[] = ['questions', 'plant', 'grow', 'observe'];
 
 export interface StepModel { model: string; effort: string | null }
 
+export type SignIn = 'claude-code' | 'api-key';
+export const SIGN_INS: SignIn[] = ['claude-code', 'api-key'];
+
 export type Appearance = 'system' | 'light' | 'dark';
 export const APPEARANCES: Appearance[] = ['system', 'light', 'dark'];
 
 export interface Settings {
   /** The greenhouse's own screens; each sprout keeps the feel it was planted with. */
   appearance: Appearance;
-  claude: { enabled: boolean };
+  /**
+   * signIn: Claude Code's sign-in (your Claude plan), or an Anthropic API key
+   * (pay per use) kept in the keychain; keyHint is its last four characters.
+   */
+  claude: { enabled: boolean; signIn: SignIn; keyHint: string | null };
   models: Record<Step, StepModel>;
   concurrency: number;
 }
@@ -43,7 +50,7 @@ export const PRESETS: Record<string, { label: string; blurb: string; models: Rec
 
 export const DEFAULTS: Settings = {
   appearance: 'system',
-  claude: { enabled: true },
+  claude: { enabled: true, signIn: 'claude-code', keyHint: null },
   models: PRESETS.balanced.models,
   concurrency: Number(process.env.SPROUT_CONCURRENCY ?? 1),
 };
@@ -69,6 +76,7 @@ export function getSettings(db: Db): Settings {
 export function updateSettings(db: Db, patch: { appearance?: Appearance; claude?: Partial<Settings['claude']>; models?: Partial<Record<Step, Partial<StepModel>>>; concurrency?: number }): Settings {
   const current = getSettings(db);
   if (patch.appearance !== undefined && !APPEARANCES.includes(patch.appearance)) throw new Error('Appearance must be system, light or dark.');
+  if (patch.claude?.signIn !== undefined && !SIGN_INS.includes(patch.claude.signIn)) throw new Error('Sign in with Claude Code or an API key.');
   const next: Settings = {
     appearance: patch.appearance ?? current.appearance,
     claude: { ...current.claude, ...patch.claude },

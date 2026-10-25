@@ -14,7 +14,7 @@ import { startScheduler } from './scheduler.ts';
 import { drawMissingIcons } from './icons.ts';
 import { stopAll } from './sprouts.ts';
 import { acquireLock, releaseLock } from './lock.ts';
-import { checkCredentials, openSignIn, type CredentialStatus } from './agent/credentials.ts';
+import { checkCredentials, openSignIn, useSignIn, type CredentialStatus } from './agent/credentials.ts';
 import { bus } from './bus.ts';
 import { listModels } from './agent/models.ts';
 import { claudeEnabled, getSettings } from './settings.ts';
@@ -50,6 +50,7 @@ export async function startGreenhouse(options: GreenhouseOptions): Promise<Green
   db.prepare("UPDATE whispers SET status = 'new' WHERE status = 'taken'").run();
   db.prepare("UPDATE sprouts SET status = 'failed' WHERE status = 'planting'").run();
 
+  useSignIn(getSettings(db).claude.signIn);
   let credentials: CredentialStatus | null = null;
   // While signed out, keep checking so signing in (in Terminal) shows up by
   // itself; often for a few minutes after Sign in is pressed.

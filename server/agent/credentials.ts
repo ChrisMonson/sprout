@@ -9,6 +9,15 @@ import { execFile } from 'node:child_process';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import { claudeExecutable } from '../platform.ts';
 import { runtimePath } from '../runtime.ts';
+import { readApiKey } from './apikey.ts';
+import type { SignIn } from '../settings.ts';
+
+let signIn: SignIn = 'claude-code';
+
+/** How agents sign in to Claude; the greenhouse sets this from its settings. */
+export function useSignIn(method: SignIn) {
+  signIn = method;
+}
 
 const PASS_THROUGH = ['HOME', 'PATH', 'USER', 'LOGNAME', 'LANG', 'LC_ALL', 'TMPDIR', 'SHELL', 'CLAUDE_CODE_OAUTH_TOKEN'];
 
@@ -20,17 +29,27 @@ export function agentEnv(extra: Record<string, string> = {}): Record<string, str
     if (value) env[key] = value;
   }
   if (process.env.SPROUT_ANTHROPIC_API_KEY) env.ANTHROPIC_API_KEY = process.env.SPROUT_ANTHROPIC_API_KEY;
+  else if (signIn === 'api-key') {
+    // Claude Code uses ANTHROPIC_API_KEY over its own sign-in when it's set.
+    delete env.CLAUDE_CODE_OAUTH_TOKEN;
+    env.ANTHROPIC_API_KEY = readApiKey() ?? '';
+  }
   env.PATH = runtimePath();
   return { ...env, ...extra };
 }
 
 /** Sprout uses Claude Code's sign-in (the `claude` command), which the Claude app doesn't share. */
 const SIGNED_OUT = 'Sprout uses Claude Code’s sign-in, and it has expired or isn’t set up.';
+const BAD_KEY = 'Your Anthropic API key didn’t work. Check it, or switch back to Claude Code’s sign-in.';
+const NO_KEY = 'Sprout is set to use an Anthropic API key, but none is saved yet.';
 
 export interface CredentialStatus { ok: boolean; message: string; checkedAt: number; signedOut?: boolean }
 
 export async function checkCredentials(): Promise<CredentialStatus> {
   const checkedAt = Date.now();
+  const usingKey = signIn === 'api-key' && !process.env.SPROUT_ANTHROPIC_API_KEY;
+  if (usingKey && !readApiKey()) return { ok: false, checkedAt, message: NO_KEY };
+  const signedOutMessage = usingKey ? BAD_KEY : SIGNED_OUT;
   try {
     const q = query({
       prompt: 'Reply with exactly: OK',
@@ -48,12 +67,12 @@ export async function checkCredentials(): Promise<CredentialStatus> {
     for await (const msg of q) {
       if (msg.type === 'assistant' && msg.error) {
         const signedOut = ['authentication_failed', 'oauth_org_not_allowed', 'account_on_hold', 'verification_required'].includes(msg.error);
-        return { ok: false, checkedAt, signedOut, message: signedOut ? SIGNED_OUT : `Claude is unavailable right now (${msg.error}).` };
+        return { ok: false, checkedAt, message: signedOut ? signedOutMessage : `Claude is unavailable right now (${msg.error}).`, signedOut: signedOut && !usingKey };
       }
       if (msg.type === 'result') {
         return msg.subtype === 'success' && !msg.is_error
           ? { ok: true, checkedAt, message: 'Signed in.' }
-          : { ok: false, checkedAt, signedOut: true, message: `Could not reach Claude. ${SIGNED_OUT}` };
+          : { ok: false, checkedAt, signedOut: !usingKey, message: `Could not reach Claude. ${signedOutMessage}` };
       }
     }
     return { ok: false, checkedAt, message: 'Claude did not answer.' };

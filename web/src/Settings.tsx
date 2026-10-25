@@ -6,7 +6,7 @@ type Step = 'questions' | 'plant' | 'grow' | 'observe';
 interface StepModel { model: string; effort: string | null }
 interface ModelChoice { value: string; displayName: string; description: string; resolvedModel: string; followsLatest: boolean; efforts: string[] }
 interface View {
-  settings: { appearance: 'system' | 'light' | 'dark'; claude: { enabled: boolean }; models: Record<Step, StepModel>; concurrency: number };
+  settings: { appearance: 'system' | 'light' | 'dark'; claude: { enabled: boolean; signIn: 'claude-code' | 'api-key'; keyHint: string | null }; models: Record<Step, StepModel>; concurrency: number };
   presets: Record<string, { label: string; blurb: string; models: Record<Step, StepModel> }>;
   models: ModelChoice[];
   modelsError: string;
@@ -22,6 +22,65 @@ const STEPS: { step: Step; label: string; what: string }[] = [
 
 const same = (a: Record<Step, StepModel>, b: Record<Step, StepModel>) =>
   STEPS.every(({ step }) => a[step].model === b[step].model && (a[step].effort ?? null) === (b[step].effort ?? null));
+
+/** Claude Code's sign-in (your Claude plan), or an Anthropic API key (pay per use) kept in the keychain. */
+function SignInChoice({ view, state, busy, save, replace, onChange }: {
+  view: View; state: AppState; busy: boolean; save: (patch: unknown) => Promise<void>; replace: (view: View) => void; onChange: () => void;
+}) {
+  const { signIn, keyHint } = view.settings.claude;
+  const [draft, setDraft] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const call = async (work: () => Promise<View>) => {
+    setSaving(true);
+    setError('');
+    try {
+      replace(await work());
+      setDraft('');
+      setEditing(false);
+      onChange();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+  const status = state.credentials;
+  return (
+    <div className="sign-in">
+      <div className="settings-row">
+        <span className="muted small">Sign in with</span>
+        <div className="segmented" role="radiogroup" aria-label="Sign in with">
+          {(['claude-code', 'api-key'] as const).map(value => (
+            <button key={value} role="radio" aria-checked={signIn === value} disabled={busy || saving} onClick={() => save({ claude: { signIn: value } })}>
+              {value === 'claude-code' ? 'Claude Code' : 'API key'}
+            </button>
+          ))}
+        </div>
+      </div>
+      <p className="muted small">{signIn === 'claude-code'
+        ? 'Uses your Claude plan, through the sign-in of Claude Code (the claude command).'
+        : 'Billed per use to your Anthropic Console account, instead of your Claude plan. The key is kept in your Mac’s keychain.'}</p>
+      {signIn === 'api-key' && (keyHint && !editing ? (
+        <div className="key-row">
+          <span className="small">Key ending in <code>{keyHint}</code></span>
+          <button className="link-btn small" onClick={() => setEditing(true)} disabled={saving}>Replace</button>
+          <button className="link-btn small" onClick={() => call(() => api.delete<View>('/settings/api-key'))} disabled={saving}>Remove</button>
+        </div>
+      ) : (
+        <form className="key-row" onSubmit={e => { e.preventDefault(); void call(() => api.put<View>('/settings/api-key', { key: draft })); }}>
+          <label className="sr" htmlFor="api-key">Anthropic API key</label>
+          <input id="api-key" className="text-field" type="password" autoComplete="off" spellCheck={false} placeholder="sk-ant-…" value={draft} onChange={e => setDraft(e.target.value)} />
+          <button className="btn small" type="submit" disabled={saving || !draft.trim()}>{saving ? 'Checking…' : 'Save'}</button>
+          {keyHint && <button className="btn quiet small" type="button" onClick={() => { setEditing(false); setDraft(''); }}>Cancel</button>}
+        </form>
+      ))}
+      {error && <p className="error small" role="alert">{error}</p>}
+      {status && !(signIn === 'api-key' && !keyHint) && <p className={status.ok ? 'muted small' : 'error small'}>{status.ok ? (signIn === 'api-key' ? 'Connected with your API key.' : 'Signed in to Claude.') : status.message}</p>}
+    </div>
+  );
+}
 
 /** Greenhouse Settings: Claude on or off, which model each step uses, and how many agents work at once. */
 export default function SettingsPage({ state, onChange }: { state: AppState; onChange: () => void }) {
@@ -93,9 +152,7 @@ export default function SettingsPage({ state, onChange }: { state: AppState; onC
               <span className="track" aria-hidden="true" />{enabled ? 'On' : 'Off'}
             </button>
           </div>
-          {enabled && state.credentials && (
-            <p className={state.credentials.ok ? 'muted small' : 'error small'}>{state.credentials.ok ? 'Signed in to Claude.' : state.credentials.message}</p>
-          )}
+          {enabled && <SignInChoice view={view} state={state} busy={busy} save={save} replace={setView} onChange={onChange} />}
         </section>
 
         {enabled && (

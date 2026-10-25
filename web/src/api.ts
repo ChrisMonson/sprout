@@ -5,6 +5,7 @@ export interface SproutSummary { id: string; name: string; seed: string; status:
 export interface AppState {
   appearance?: 'system' | 'light' | 'dark';
   claudeEnabled?: boolean;
+  signIn?: 'claude-code' | 'api-key';
   credentials: { ok: boolean; message: string; signedOut?: boolean } | null;
   git?: boolean;
   pausedUntil: number;
@@ -49,6 +50,7 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T>
 export const api = {
   get: <T>(path: string) => call<T>('GET', path),
   post: <T>(path: string, body?: unknown) => call<T>('POST', path, body ?? {}),
+  put: <T>(path: string, body?: unknown) => call<T>('PUT', path, body),
   delete: <T>(path: string) => call<T>('DELETE', path),
 };
 

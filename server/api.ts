@@ -5,7 +5,8 @@ import { bus, type BusMessage } from './bus.ts';
 import { createSproutRow, plantFiles, ensureDevServer } from './sprouts.ts';
 import { feelById, FEELS } from './feel.ts';
 import { nextQuestion, type Exchange } from './agent/questions.ts';
-import type { CredentialStatus } from './agent/credentials.ts';
+import { useSignIn, type CredentialStatus } from './agent/credentials.ts';
+import { keyHint, readApiKey, removeApiKey, saveApiKey } from './agent/apikey.ts';
 import { plant, isBusy, pausedUntil } from './scheduler.ts';
 import { rewind } from './apply.ts';
 import { removeSprout, restoreSprout, deleteForever, listRemoved } from './remove.ts';
@@ -66,10 +67,31 @@ export function createApi(db: Db, host: Host) {
   app.post('/settings', async c => {
     const patch = await c.req.json();
     const wasEnabled = claudeEnabled(db);
+    const wasSignIn = getSettings(db).claude.signIn;
+    if (patch?.claude) delete patch.claude.keyHint; // only set by saving a key
     try { updateSettings(db, patch); } catch (err) { throw new HttpError(400, (err as Error).message); }
-    if (claudeEnabled(db) !== wasEnabled) await host.recheck();
+    useSignIn(getSettings(db).claude.signIn);
+    if (claudeEnabled(db) !== wasEnabled || getSettings(db).claude.signIn !== wasSignIn) await host.recheck();
     if (patch?.appearance) platform().setAppearance?.(getSettings(db).appearance);
     bus.send({ type: 'sprout', sproutId: '' });
+    return c.json(await settingsView());
+  });
+
+  // An API key goes straight to the macOS keychain; settings keep only its last four characters.
+  app.put('/settings/api-key', async c => {
+    const { key } = await c.req.json<{ key: string }>();
+    try { saveApiKey(key ?? ''); } catch (err) { throw new HttpError(400, (err as Error).message); }
+    updateSettings(db, { claude: { signIn: 'api-key', keyHint: keyHint(readApiKey() ?? '') } });
+    useSignIn('api-key');
+    await host.recheck();
+    return c.json(await settingsView());
+  });
+
+  app.delete('/settings/api-key', async c => {
+    removeApiKey();
+    updateSettings(db, { claude: { signIn: 'claude-code', keyHint: null } });
+    useSignIn('claude-code');
+    await host.recheck();
     return c.json(await settingsView());
   });
 
@@ -80,6 +102,7 @@ export function createApi(db: Db, host: Host) {
   app.get('/state', c => c.json({
     appearance: getSettings(db).appearance,
     claudeEnabled: claudeEnabled(db),
+    signIn: getSettings(db).claude.signIn,
     credentials: host.credentials(),
     git: host.git,
     pausedUntil: pausedUntil(),
