@@ -17,6 +17,8 @@ export const paths = {
   sprouts: join(HOME, 'sprouts'),
   removed: join(HOME, 'removed'),
   turns: join(HOME, 'turns'),
+  /** Phone builds; each sprout's Android project is kept for faster rebuilds. */
+  harvest: join(HOME, 'harvest'),
   lock: join(HOME, 'greenhouse.lock'),
   shimBin: join(HOME, '.runtime', 'bin'),
   template: join(RESOURCES, 'template'),
@@ -43,5 +45,10 @@ export function sproutPaths(id: string) {
     understanding: join(base, 'memory', 'understanding.md'),
     notes: join(base, 'memory', 'notes.md'),
     log: join(base, 'devserver.log'),
+    /** Drawn by Sprout; kept outside the repo so rewinds never touch it. */
+    icon: join(base, 'icon.svg'),
+    /** One the person chose, used instead of the drawn one. */
+    iconCustom: join(base, 'icon-custom.svg'),
+    iconCache: join(base, 'icon-cache'),
   };
 }

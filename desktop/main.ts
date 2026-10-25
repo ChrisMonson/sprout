@@ -138,7 +138,7 @@ async function onMessage(msg: FromGreenhouse) {
       app.exit(1);
       break;
     case 'notify':
-      showNotice(msg.notice);
+      void showNotice(msg.notice);
       break;
     case 'appearance':
       // Native menus, dialogs and the window follow Greenhouse Settings.
@@ -203,8 +203,26 @@ app.on('window-all-closed', () => { /* keep running in the menu bar */ });
 
 // ---------- notifications ----------
 
-function showNotice(n: Notice) {
-  const note = new Notification({ title: n.app, subtitle: n.body ? n.title : undefined, body: n.body || n.title });
+/** A sprout's icon as an image for native UI, or undefined if it has none yet. Cached by icon version. */
+const icons = new Map<string, Electron.NativeImage>();
+async function sproutIcon(id: string, version: number | undefined, points: number): Promise<Electron.NativeImage | undefined> {
+  if (version === 0) return undefined;
+  const key = `${id}:${version ?? 'latest'}:${points}`;
+  if (version !== undefined && icons.has(key)) return icons.get(key);
+  try {
+    const res = await fetch(`${base}/api/sprouts/${id}/icon.png?size=${points * 2}`);
+    if (!res.ok) return undefined;
+    const image = nativeImage.createFromBuffer(Buffer.from(await res.arrayBuffer()), { scaleFactor: 2 });
+    if (version !== undefined) icons.set(key, image);
+    return image;
+  } catch {
+    return undefined;
+  }
+}
+
+async function showNotice(n: Notice) {
+  const icon = await sproutIcon(n.sproutId, undefined, 64);
+  const note = new Notification({ title: n.app, subtitle: n.body ? n.title : undefined, body: n.body || n.title, icon });
   // Kept referenced until it goes away, or clicks stop arriving.
   notices.add(note);
   note.on('click', () => { notices.delete(note); openSprout(n.sproutId); });
@@ -214,7 +232,7 @@ function showNotice(n: Notice) {
 
 // ---------- the menu bar ----------
 
-interface SproutSummary { id: string; name: string; status: string; growing: boolean }
+interface SproutSummary { id: string; name: string; status: string; growing: boolean; icon?: number }
 
 function createTray() {
   if (tray) return;
@@ -238,11 +256,12 @@ async function refreshTray() {
     await Promise.all(ready.map(s => fetch(`${base}/api/sprouts/${s.id}/growing`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ on }) })));
     void refreshTray();
   };
+  const menuIcons = await Promise.all(sprouts.map(s => sproutIcon(s.id, s.icon ?? 0, 16)));
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Open Sprout', click: () => showWindow() },
     { type: 'separator' },
     ...(sprouts.length
-      ? sprouts.map(s => ({ label: s.name || 'Unnamed sprout', sublabel: s.status === 'ready' ? (s.growing ? 'Growing' : 'Resting') : undefined, click: () => openSprout(s.id) }))
+      ? sprouts.map((s, i) => ({ label: s.name || 'Unnamed sprout', icon: menuIcons[i], sublabel: s.status === 'ready' ? (s.growing ? 'Growing' : 'Resting') : undefined, click: () => openSprout(s.id) }))
       : [{ label: 'No sprouts yet', enabled: false }]),
     { type: 'separator' },
     ready.length

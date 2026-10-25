@@ -64,6 +64,16 @@ Settings (environment variables):
 
 > **Personal use only, for now.** Sprout runs agents on the Claude subscription you're signed in with. Anthropic's terms don't allow a third-party app to route other people's Pro/Max credentials. Before sharing Sprout, add an API-key path in `server/agent/credentials.ts`, the only place that handles sign-in.
 
+### Harvest to Android
+
+A sprout's Settings drawer can **Harvest** it into an Android app, installed over `adb` on a phone with USB debugging on or on an emulator, or saved as an `.apk`. It needs Android Studio (for the SDK and its Java). The app is a copy: the sprout's own code runs on the phone with its own database, optionally starting from your data, but it doesn't grow there and nothing flows back.
+
+- The sprout's server runs inside the app's web view: `/api` requests go straight to its Hono app, `node:sqlite` is swapped for sql.js (saved to the phone after writes), outside `fetch` goes through Android's networking, and `notify()` schedules Android notifications (`runtime/harvest/`).
+- Harvesting again keeps the data already on the phone; new migrations still apply.
+- Background checks keep going while the app is closed: Android wakes it every 15 minutes at best (WorkManager), loads it in a hidden web view, runs its `every()` tasks (or the `setInterval` timers its server starts as it loads), saves and sleeps again. A native helper does that run's outside `fetch` and notifications (`runtime/harvest/android/`). If the app saved while a background run was going, the run's changes are dropped, and the open app reloads after a run so it shows what was found.
+- A sprout that needs Node itself (files, UDP, other programs) can't be harvested, and the drawer says why (`server/harvest/check.ts`).
+- Each sprout's Android project lives in `~/Sprout/harvest/<id>`. The first harvest downloads Gradle and takes a few minutes; later ones take seconds to a minute.
+
 ## How it fits together
 
 ```

@@ -443,6 +443,97 @@ function ExportSprout({ id }: { id: string }) {
   );
 }
 
+interface HarvestInfo {
+  running: boolean;
+  step: string;
+  error: string | null;
+  built: { at: number; withData: boolean; installedOn: string | null } | null;
+  blockers: string[];
+  warnings: string[];
+}
+interface Devices { devices: { serial: string; label: string; problem: string | null }[]; emulators: string[]; missing: string | null }
+
+const SAVE_ONLY = '';
+
+/** Builds the sprout as an Android app and installs it on a phone or emulator. */
+function HarvestSprout({ id }: { id: string }) {
+  const [info, setInfo] = useState<HarvestInfo | null>(null);
+  const [found, setFound] = useState<Devices | null>(null);
+  const [serial, setSerial] = useState<string | null>(null);
+  const [withData, setWithData] = useState(true);
+  const [error, setError] = useState('');
+  const [starting, setStarting] = useState(false);
+
+  const load = useCallback(() => { api.get<HarvestInfo>(`/sprouts/${id}/harvest`).then(setInfo).catch(() => {}); }, [id]);
+  useEffect(load, [load]);
+  useStream(msg => { if (msg.type === 'harvest' && msg.sproutId === id) load(); });
+
+  // Phones come and go and emulators take a while to boot, so keep looking while this is open.
+  useEffect(() => {
+    let alive = true;
+    const look = () => api.get<Devices>('/harvest/devices').then(d => { if (alive) setFound(d); }).catch(() => {});
+    look();
+    const timer = setInterval(look, 3000);
+    return () => { alive = false; clearInterval(timer); };
+  }, []);
+
+  const ready = found?.devices.filter(d => !d.problem) ?? [];
+  const chosen = serial ?? ready[0]?.serial ?? SAVE_ONLY;
+
+  const harvest = async () => {
+    setError('');
+    try {
+      const next = await api.post<HarvestInfo>(`/sprouts/${id}/harvest`, { serial: chosen || null, includeData: withData });
+      setInfo(current => ({ ...current, ...next }));
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
+  const startEmulator = async (name: string) => {
+    setStarting(true);
+    try { await api.post('/harvest/emulator', { name }); } catch (err) { setError((err as Error).message); setStarting(false); }
+  };
+  useEffect(() => { if (ready.some(d => d.label.includes('(emulator)'))) setStarting(false); }, [ready]);
+
+  if (!info) return null;
+  if (info.blockers?.length) return <div className="harvest">{info.blockers.map(b => <p key={b} className="muted small">{b}</p>)}</div>;
+  if (found?.missing) return <p className="muted small">{found.missing}</p>;
+
+  return (
+    <div className="harvest">
+      {info.warnings?.map(w => <p key={w} className="muted small harvest-note">{w}</p>)}
+      <label className="sr" htmlFor="harvest-device">Put it on</label>
+      <select id="harvest-device" className="text-field" value={chosen} disabled={info.running} onChange={e => setSerial(e.target.value)}>
+        {ready.map(d => <option key={d.serial} value={d.serial}>Install on {d.label}</option>)}
+        <option value={SAVE_ONLY}>Just build the app (.apk)</option>
+      </select>
+      {found?.devices.filter(d => d.problem).map(d => <p key={d.serial} className="muted small">{d.label}: {d.problem}</p>)}
+      {!ready.length && !!found?.emulators.length && (
+        <button className="btn quiet small" disabled={starting} onClick={() => startEmulator(found.emulators[0])}>
+          {starting ? 'Starting the emulator…' : `Start the ${found.emulators[0].replace(/_/g, ' ')} emulator`}
+        </button>
+      )}
+      <label className="check">
+        <input type="checkbox" checked={withData} disabled={info.running} onChange={e => setWithData(e.target.checked)} />
+        Start it with my data
+      </label>
+      <div className="export">
+        <button className="btn small" disabled={info.running} onClick={harvest}>{info.running ? 'Harvesting…' : 'Harvest'}</button>
+        {info.built && !info.running && <a className="btn quiet small" href={`/api/sprouts/${id}/harvest/apk`} download>Save .apk</a>}
+      </div>
+      {info.running && <p className="muted small" role="status">{info.step}</p>}
+      {!info.running && info.built && !info.error && (
+        <p className="muted small" role="status">
+          {info.built.installedOn ? `Installed ${timeOf(info.built.at)}. It’s open on the device now.` : `Built ${timeOf(info.built.at)}.`}
+          {' '}Harvesting again keeps the data already on the phone.
+        </p>
+      )}
+      {(info.error || error) && <pre className="error small harvest-error" role="alert">{info.error || error}</pre>}
+    </div>
+  );
+}
+
 /** What you can do with the sprout itself, as opposed to its history. */
 function SettingsDrawer({ id, name, seed, onSaved, onClose }: { id: string; name: string; seed: string; onSaved: () => void; onClose: () => void }) {
   return (
@@ -453,15 +544,71 @@ function SettingsDrawer({ id, name, seed, onSaved, onClose }: { id: string; name
       </header>
       <DetailsEditor id={id} name={name} seed={seed} onSaved={onSaved} />
       <section>
+        <h3>Icon</h3>
+        <IconEditor id={id} />
+      </section>
+      <section>
         <h3>Export</h3>
         <p className="muted" style={{ margin: 0, fontSize: 14, lineHeight: 1.5 }}>Save {name || 'this sprout'} as a .sprout file: its code and history, what Sprout has learned, and optionally your data. Import it from the home page, here or on another Mac.</p>
         <ExportSprout id={id} />
+      </section>
+      <section>
+        <h3>Harvest</h3>
+        <p className="muted" style={{ margin: 0, fontSize: 14, lineHeight: 1.5 }}>Make {name || 'this sprout'} into an Android app, for a phone with USB debugging on or an emulator. It’s a copy: it keeps working on the phone, but it won’t keep growing there and its data stays on the phone.</p>
+        <HarvestSprout id={id} />
       </section>
       <section>
         <h3>Remove</h3>
         <RemoveSprout id={id} name={name} />
       </section>
     </aside>
+  );
+}
+
+interface IconInfo { version: number; custom: boolean; drawing: boolean }
+
+/** The sprout's icon: drawn by Sprout, or an SVG the person picks instead. */
+function IconEditor({ id }: { id: string }) {
+  const [info, setInfo] = useState<IconInfo | null>(null);
+  const [error, setError] = useState('');
+  const file = useRef<HTMLInputElement>(null);
+  const load = useCallback(() => { api.get<IconInfo>(`/sprouts/${id}/icon`).then(setInfo).catch(() => {}); }, [id]);
+  useEffect(load, [load]);
+  useStream(msg => { if (msg.type === 'sprout' && msg.sproutId === id) load(); });
+
+  const act = async (work: () => Promise<IconInfo>) => {
+    setError('');
+    try { setInfo(await work()); } catch (err) { setError((err as Error).message); }
+  };
+  const upload = async (picked: File | undefined) => {
+    if (!picked) return;
+    const text = await picked.text();
+    await act(async () => {
+      const res = await fetch(`/api/sprouts/${id}/icon`, { method: 'PUT', headers: { 'content-type': 'image/svg+xml' }, body: text });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error ?? 'That icon couldn’t be used.');
+      return body as IconInfo;
+    });
+    if (file.current) file.current.value = '';
+  };
+
+  if (!info) return null;
+  return (
+    <>
+      <div className="icon-editor">
+        <span className="preview">
+          {info.version ? <img src={`/api/sprouts/${id}/icon.svg?v=${info.version}`} alt="" /> : info.drawing ? 'Drawing…' : 'None yet'}
+        </span>
+        <div className="actions">
+          <button className="btn quiet small" onClick={() => file.current?.click()}>Use my own SVG…</button>
+          {info.custom
+            ? <button className="btn quiet small" onClick={() => act(() => api.delete<IconInfo>(`/sprouts/${id}/icon`))}>Use Sprout’s drawing</button>
+            : <button className="btn quiet small" disabled={info.drawing} onClick={() => act(() => api.post<IconInfo>(`/sprouts/${id}/icon/draw`))}>{info.drawing ? 'Drawing…' : 'Draw a new one'}</button>}
+        </div>
+        <input ref={file} type="file" accept=".svg,image/svg+xml" hidden onChange={e => void upload(e.target.files?.[0])} />
+      </div>
+      {error && <p className="error small" role="alert" style={{ margin: 0 }}>{error}</p>}
+    </>
   );
 }
 

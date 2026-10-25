@@ -18,3 +18,13 @@ export function notify(notification: Notification): Promise<number | null>;
 
 /** Cancel a scheduled notification by key. Returns how many were cancelled. */
 export function cancelNotification(key: string): Promise<number>;
+
+/**
+ * Run a task now and then, for checks that should keep going: polling a feed,
+ * sending reminders about new things. It runs soon after the server starts and
+ * then every `interval` ('30s', '15m', '1h', or milliseconds). On the Mac that's
+ * like setInterval. In a harvested phone app it also runs while the app is
+ * closed, when Android wakes it (about every 15 minutes at most), so return a
+ * promise that settles when the work is done. Returns a function that stops it.
+ */
+export function every(interval: string | number, task: () => unknown): () => void;

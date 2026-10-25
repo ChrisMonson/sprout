@@ -34,3 +34,21 @@ export async function cancelNotification(key) {
   const data = await post('/notify/cancel', { key });
   return data ? data.cancelled : 0;
 }
+
+const UNITS = { s: 1000, m: 60_000, h: 3_600_000 };
+
+/** '15m', '1h', '30s' or milliseconds → milliseconds. */
+export function intervalMs(every) {
+  if (typeof every === 'number') return every;
+  const m = String(every).trim().match(/^(\d+(?:\.\d+)?)\s*([smh])$/);
+  if (!m) throw new Error(`every(): use a number of milliseconds or a string like '15m' (got ${JSON.stringify(every)}).`);
+  return Number(m[1]) * UNITS[m[2]];
+}
+
+export function every(interval, task) {
+  const ms = Math.max(1000, intervalMs(interval));
+  const run = () => { Promise.resolve().then(task).catch(err => console.error('[sprout] every():', err)); };
+  const first = setTimeout(run, Math.min(ms, 5000));
+  const timer = setInterval(run, ms);
+  return () => { clearTimeout(first); clearInterval(timer); };
+}

@@ -11,6 +11,7 @@ import { paths } from './paths.ts';
 import { ensureRuntime, hasGit } from './runtime.ts';
 import { createApi } from './api.ts';
 import { startScheduler } from './scheduler.ts';
+import { drawMissingIcons } from './icons.ts';
 import { stopAll } from './sprouts.ts';
 import { acquireLock, releaseLock } from './lock.ts';
 import { checkCredentials, openSignIn, type CredentialStatus } from './agent/credentials.ts';
@@ -98,6 +99,8 @@ export async function startGreenhouse(options: GreenhouseOptions): Promise<Green
   log(`Sprout is running at http://localhost:${options.port}`);
 
   const stopScheduler = startScheduler(db);
+  // Sprouts planted before icons existed (or while Claude was off) get one now, quietly.
+  setTimeout(() => void drawMissingIcons(db), 20_000);
 
   return {
     port: options.port,
