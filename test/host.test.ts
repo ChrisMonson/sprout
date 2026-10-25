@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readlinkSync, symlinkSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -48,8 +48,15 @@ describe('agent environment', () => {
 describe('prebuilt runtime', () => {
   it('copies the shipped dependencies once, keeping relative links', async () => {
     cpSync(join(import.meta.dirname, '..', 'runtime'), paths.runtimeSource, { recursive: true });
-    mkdirSync(join(paths.prebuiltModules, 'vite'), { recursive: true });
-    writeFileSync(join(paths.prebuiltModules, 'vite', 'package.json'), '{}');
+    // A prebuilt set made from the same package.json, with every dependency in it.
+    const pkg = readFileSync(join(paths.runtimeSource, 'package.json'), 'utf8');
+    mkdirSync(paths.prebuiltModules, { recursive: true });
+    writeFileSync(join(paths.prebuiltModules, '..', 'package.json'), pkg);
+    for (const dep of Object.keys(JSON.parse(pkg).dependencies)) {
+      if (dep === '@sprout/greenhouse') continue;
+      mkdirSync(join(paths.prebuiltModules, dep), { recursive: true });
+      writeFileSync(join(paths.prebuiltModules, dep, 'package.json'), '{}');
+    }
     mkdirSync(join(paths.prebuiltModules, '@sprout'), { recursive: true });
     symlinkSync('../../.runtime/sdk', join(paths.prebuiltModules, '@sprout', 'greenhouse'));
 

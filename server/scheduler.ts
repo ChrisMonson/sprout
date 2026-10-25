@@ -8,6 +8,7 @@ import { sproutPaths } from './paths.ts';
 import { nextTurn } from './wake.ts';
 import { errorsSince, usageEventsSince } from './friction.ts';
 import { hasWakeNote, hasRequestNote, appendJournal } from './memory.ts';
+import { drawIcon } from './icons.ts';
 import { maybeApply, watchdog, commitWork, queueApply, hasPending } from './apply.ts';
 import { runGate, formatGate } from './gate.ts';
 import { resetWork, ensureDevServer } from './sprouts.ts';
@@ -104,6 +105,7 @@ export async function plant(db: Db, sproutId: string) {
     q.update(db, sproutId, { status: planted ? 'ready' : 'failed', grow_mark: q.maxEventId(db, sproutId), observe_mark: q.maxEventId(db, sproutId) });
     if (planted) await maybeApply(db, sproutId);
     await ensureDevServer(db, sproutId);
+    if (planted) void drawIcon(db, sproutId);
   } catch (err) {
     console.error('[plant]', sproutId, err);
     q.update(db, sproutId, { status: 'failed' });

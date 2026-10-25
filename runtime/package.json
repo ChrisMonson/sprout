@@ -4,6 +4,10 @@
   "type": "module",
   "description": "Shared dependencies for every sprout. Installed once into SPROUT_HOME by the greenhouse.",
   "dependencies": {
+    "@capacitor/android": "8.5.3",
+    "@capacitor/cli": "8.5.3",
+    "@capacitor/core": "8.5.3",
+    "@capacitor/local-notifications": "8.3.1",
     "@sprout/greenhouse": "file:./.runtime/sdk",
     "@types/node": "26.6.5",
     "@types/react": "19.3.0",
@@ -12,6 +16,7 @@
     "hono": "4.13.13",
     "react": "19.3.1",
     "react-dom": "19.3.1",
+    "sql.js": "1.15.1",
     "typescript": "7.0.2",
     "vite": "8.3.5"
   }

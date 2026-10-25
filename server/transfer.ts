@@ -14,6 +14,7 @@ import { git } from './git.ts';
 import { q, type Db } from './db.ts';
 import { newSproutId } from './sprouts.ts';
 import { backupDb } from './snapshot.ts';
+import { readIcons, writeIcons } from './icons.ts';
 
 const FORMAT = 'sprout/1';
 
@@ -25,6 +26,8 @@ interface SproutFile {
   sprout: { name: string; seed: string; conversation: string; feel: string | null };
   growth: GrowthEntry[];
   memory: { journal: string; understanding: string };
+  /** The drawn icon and the one the person chose, as SVG (newer files only) */
+  icons?: { drawn: string | null; custom: string | null };
   /** base64 git bundle of the sprout's main branch */
   repo: string;
   /** base64 SQLite database, when the person chose to include their data */
@@ -52,6 +55,7 @@ export async function exportSprout(db: Db, id: string, includeData: boolean): Pr
       sprout: { name: row.name, seed: row.seed, conversation: row.conversation, feel: row.feel },
       growth: db.prepare('SELECT ts, kind, title, detail, commit_sha, rewindable FROM growth WHERE sprout_id = ? ORDER BY id').all(id) as unknown as GrowthEntry[],
       memory: { journal: read(p.journal), understanding: read(p.understanding) },
+      icons: readIcons(id),
       repo: readFileSync(bundle).toString('base64'),
       data,
     };
@@ -84,6 +88,7 @@ export async function importSprout(db: Db, bytes: Buffer): Promise<string> {
     if (file.data) writeFileSync(p.db, Buffer.from(file.data, 'base64'));
     writeFileSync(p.journal, file.memory?.journal || '# Journal\n');
     writeFileSync(p.understanding, file.memory?.understanding || '# Understanding\n');
+    writeIcons(id, file.icons);
 
     const now = Date.now();
     db.prepare('INSERT INTO sprouts (id, name, seed, conversation, feel, status, growing, created_at, last_activity, position) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')

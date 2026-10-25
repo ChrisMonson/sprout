@@ -10,6 +10,12 @@ import { plant, isBusy, pausedUntil } from './scheduler.ts';
 import { rewind } from './apply.ts';
 import { removeSprout, restoreSprout, deleteForever, listRemoved } from './remove.ts';
 import { exportSprout, importSprout } from './transfer.ts';
+import { readFileSync, existsSync } from 'node:fs';
+import { androidTools, listDevices, listEmulators, startEmulator } from './harvest/android.ts';
+import { checkPortability } from './harvest/check.ts';
+import { apkPath, harvestState, startHarvest } from './harvest/harvest.ts';
+import { sproutPaths } from './paths.ts';
+import { clearCustomIcon, drawIcon, hasCustomIcon, iconFile, iconPng, iconVersion, isDrawing, setCustomIcon } from './icons.ts';
 import { platform } from './platform.ts';
 import { addNote, addRequestNote } from './memory.ts';
 import { getSettings, updateSettings, claudeEnabled, PRESETS, STEPS } from './settings.ts';
@@ -81,6 +87,7 @@ export function createApi(db: Db, host: Host) {
     removed: listRemoved(db),
     sprouts: q.sprouts(db).filter(s => s.status !== 'seeding' && s.status !== 'removed').map(s => ({
       id: s.id, name: s.name, seed: s.seed, status: s.status, growing: !!s.growing, busy: isBusy(s.id), createdAt: s.created_at,
+      icon: iconVersion(s.id),
     })),
   }));
 
@@ -262,6 +269,83 @@ export function createApi(db: Db, host: Host) {
     q.update(db, row.id, { growing: on ? 1 : 0 });
     bus.send({ type: 'sprout', sproutId: row.id });
     return c.json({ ok: true });
+  });
+
+  // ---- icons ----
+
+  app.get('/sprouts/:id/icon', c => {
+    const row = sproutOr404(c.req.param('id'));
+    return c.json({ version: iconVersion(row.id), custom: hasCustomIcon(row.id), drawing: isDrawing(row.id) });
+  });
+
+  app.get('/sprouts/:id/icon.svg', c => {
+    const file = iconFile(sproutOr404(c.req.param('id')).id);
+    if (!file) throw new HttpError(404, 'No icon yet.');
+    return new Response(readFileSync(file), {
+      headers: { 'content-type': 'image/svg+xml', 'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'", 'cache-control': 'no-cache' },
+    });
+  });
+
+  app.get('/sprouts/:id/icon.png', async c => {
+    const size = Math.min(1024, Math.max(16, Number(c.req.query('size') ?? 64) || 64));
+    const png = await iconPng(sproutOr404(c.req.param('id')).id, size);
+    if (!png) throw new HttpError(404, 'No icon yet.');
+    return new Response(new Uint8Array(readFileSync(png)), { headers: { 'content-type': 'image/png', 'cache-control': 'no-cache' } });
+  });
+
+  app.put('/sprouts/:id/icon', async c => {
+    const row = sproutOr404(c.req.param('id'));
+    try { setCustomIcon(row.id, await c.req.text()); } catch (err) { throw new HttpError(400, (err as Error).message); }
+    return c.json({ version: iconVersion(row.id), custom: true, drawing: isDrawing(row.id) });
+  });
+
+  app.delete('/sprouts/:id/icon', c => {
+    const row = sproutOr404(c.req.param('id'));
+    clearCustomIcon(row.id);
+    return c.json({ version: iconVersion(row.id), custom: false, drawing: isDrawing(row.id) });
+  });
+
+  app.post('/sprouts/:id/icon/draw', c => {
+    const row = sproutOr404(c.req.param('id'));
+    if (!claudeEnabled(db)) throw new HttpError(409, 'Claude is off, so Sprout can’t draw a new icon right now.');
+    void drawIcon(db, row.id);
+    return c.json({ version: iconVersion(row.id), custom: hasCustomIcon(row.id), drawing: true });
+  });
+
+  // ---- harvest: the sprout as an Android app ----
+
+  app.get('/harvest/devices', async c => {
+    const tools = await androidTools();
+    if ('missing' in tools) return c.json({ devices: [], emulators: [], missing: tools.missing });
+    return c.json({ devices: await listDevices(tools), emulators: tools.emulator ? listEmulators() : [], missing: null });
+  });
+
+  app.post('/harvest/emulator', async c => {
+    const { name } = await c.req.json<{ name: string }>();
+    const tools = await androidTools();
+    if ('missing' in tools) throw new HttpError(409, tools.missing);
+    try { startEmulator(tools, name); } catch (err) { throw new HttpError(400, (err as Error).message); }
+    return c.json({ ok: true });
+  });
+
+  const harvestInfo = (row: { id: string; name: string }) => ({ ...harvestState(row.id), ...checkPortability(sproutPaths(row.id).live, row.name) });
+
+  app.get('/sprouts/:id/harvest', c => c.json(harvestInfo(sproutOr404(c.req.param('id')))));
+
+  app.post('/sprouts/:id/harvest', async c => {
+    const row = sproutOr404(c.req.param('id'));
+    const { serial, includeData } = await c.req.json<{ serial: string | null; includeData: boolean }>();
+    try { startHarvest(db, row.id, { serial, includeData: !!includeData }); } catch (err) { throw new HttpError(409, (err as Error).message); }
+    return c.json(harvestInfo(row));
+  });
+
+  app.get('/sprouts/:id/harvest/apk', c => {
+    const row = sproutOr404(c.req.param('id'));
+    if (!existsSync(apkPath(row.id))) throw new HttpError(404, 'Harvest it first.');
+    const slug = (row.name || 'sprout').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'sprout';
+    return new Response(new Uint8Array(readFileSync(apkPath(row.id))), {
+      headers: { 'content-type': 'application/vnd.android.package-archive', 'content-disposition': `attachment; filename="${slug}.apk"` },
+    });
   });
 
   app.get('/sprouts/:id/export', async c => {

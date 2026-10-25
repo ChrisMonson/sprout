@@ -22,15 +22,19 @@ export async function ensureRuntime(log: (line: string) => void = console.log) {
 
   // Greenhouse-owned scripts are refreshed on every start.
   mkdirSync(paths.runtime, { recursive: true });
-  for (const file of ['runner.mjs', 'plugin.mjs', 'observer.js', 'sdk']) {
+  for (const file of ['runner.mjs', 'plugin.mjs', 'observer.js', 'sdk', 'harvest']) {
     cpSync(join(paths.runtimeSource, file), join(paths.runtime, file), { recursive: true });
   }
 
   const wanted = readFileSync(join(paths.runtimeSource, 'package.json'), 'utf8');
   const installedPkg = join(paths.home, 'package.json');
   const current = existsSync(installedPkg) ? readFileSync(installedPkg, 'utf8') : '';
-  if (wanted !== current || !existsSync(join(paths.nodeModules, 'vite'))) {
-    if (existsSync(paths.prebuiltModules)) {
+  const missing = Object.keys(JSON.parse(wanted).dependencies).some(dep => !existsSync(join(paths.nodeModules, dep, 'package.json')));
+  if (wanted !== current || missing) {
+    // Only a prebuilt set made from this same package.json; an older one (say,
+    // left from packaging before a dependency was added) would be missing things.
+    const prebuiltPkg = join(paths.prebuiltModules, '..', 'package.json');
+    if (existsSync(paths.prebuiltModules) && existsSync(prebuiltPkg) && readFileSync(prebuiltPkg, 'utf8') === wanted) {
       log('Setting up the sprout runtime…');
       rmSync(paths.nodeModules, { recursive: true, force: true });
       // Symlinks stay relative, so @sprout/greenhouse points at this home's .runtime/sdk.

@@ -7,7 +7,8 @@ export type BusMessage =
   | { type: 'progress'; sproutId: string; turnId: number; line: string }
   | { type: 'turn'; sproutId: string; turnId: number; kind: string; status: string }
   | { type: 'toast'; sproutId: string; text: string; undoGrowthId?: number }
-  | { type: 'notification'; sproutId: string; title: string; body: string };
+  | { type: 'notification'; sproutId: string; title: string; body: string }
+  | { type: 'harvest'; sproutId: string };
 
 class Bus extends EventEmitter {
   send(msg: BusMessage) {

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 
 export interface Feel { id: string; name: string; blurb: string; tokens: Record<string, string>; fonts: string }
-export interface SproutSummary { id: string; name: string; seed: string; status: string; growing: boolean; busy: boolean; createdAt: number }
+export interface SproutSummary { id: string; name: string; seed: string; status: string; growing: boolean; busy: boolean; createdAt: number; icon?: number }
 export interface AppState {
   appearance?: 'system' | 'light' | 'dark';
   claudeEnabled?: boolean;
@@ -31,7 +31,8 @@ export type BusMessage =
   | { type: 'progress'; sproutId: string; turnId: number; line: string }
   | { type: 'turn'; sproutId: string; turnId: number; kind: string; status: string }
   | { type: 'toast'; sproutId: string; text: string; undoGrowthId?: number }
-  | { type: 'notification'; sproutId: string; title: string; body: string };
+  | { type: 'notification'; sproutId: string; title: string; body: string }
+  | { type: 'harvest'; sproutId: string };
 
 async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`/api${path}`, {

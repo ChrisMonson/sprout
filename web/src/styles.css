@@ -340,6 +340,13 @@ select.text-field { appearance: auto; padding: 8px 10px; }
 @media (max-width: 860px) { .tray { grid-template-columns: repeat(2, minmax(0, 1fr)); } .cell-empty.extra { display: none; } }
 @media (max-width: 560px) { .tray { grid-template-columns: minmax(0, 1fr); } .cell-empty.plant { min-height: 72px; flex-direction: row; } }
 .sprout-card .n { font-size: 18px; font-weight: 600; }
+.card-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.card-icon { width: 34px; height: 34px; flex: none; border-radius: 9px; }
+.icon-editor { display: flex; align-items: center; gap: 14px; }
+.icon-editor .preview { width: 64px; height: 64px; flex: none; border-radius: 15px; background: var(--gh-hover); display: grid; place-items: center; color: var(--gh-muted); font-size: 12px; }
+.icon-editor .preview img { width: 64px; height: 64px; border-radius: 15px; }
+.icon-editor .actions { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.icon-editor .actions .btn { text-decoration: none; }
 .sprout-card .s { font-size: 14px; color: var(--gh-muted); flex: 1; }
 .banner { background: var(--banner-bg); border: 1px solid var(--banner-line); color: var(--banner-ink); border-radius: 12px; padding: 12px 16px; font-size: 15px; }
 
@@ -351,6 +358,10 @@ select.text-field { appearance: auto; padding: 8px 10px; }
 .text-field:focus-visible { outline: none; border-color: var(--gh-green); box-shadow: 0 0 0 3px rgba(47, 107, 69, 0.12); }
 .export { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .export .btn { text-decoration: none; display: inline-flex; align-items: center; }
+.harvest { display: flex; flex-direction: column; gap: 10px; }
+.harvest p { margin: 0; line-height: 1.45; }
+.harvest > .btn { align-self: flex-start; }
+.harvest-error { margin: 0; white-space: pre-wrap; font-family: inherit; max-height: 220px; overflow: auto; }
 .check { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--gh-muted); cursor: pointer; }
 .check input { width: 16px; height: 16px; accent-color: var(--gh-green); }
 .removed { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
