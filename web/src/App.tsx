@@ -246,7 +246,8 @@ function GrowNeedsClaude({ state, onChange }: { state: AppState; onChange: () =>
           {off ? (
             <>
               <p className="muted" style={{ margin: 0 }}>Claude is turned off in Settings.</p>
-              <button className="btn" onClick={turnOn} disabled={busy}>{busy ? 'Turning on…' : 'Turn on Claude'}</button>
+              <button className="btn" onClick={turnOn} disabled={busy}>{busy ? <><span className="spinner" aria-hidden="true" />Turning on…</> : 'Turn on Claude'}</button>
+              {busy && <p className="muted small" role="status" style={{ margin: 0 }}>Checking your Claude sign-in. This takes a few seconds.</p>}
             </>
           ) : usingKey ? (
             <>

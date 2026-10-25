@@ -36,8 +36,8 @@ function UsageCard() {
 }
 
 /** Claude Code's sign-in (your Claude plan), or an Anthropic API key (pay per use) kept in the keychain. */
-function SignInChoice({ view, state, busy, save, replace, onChange }: {
-  view: View; state: AppState; busy: boolean; save: (patch: unknown) => Promise<void>; replace: (view: View) => void; onChange: () => void;
+function SignInChoice({ view, state, busy, working, save, replace, onChange }: {
+  view: View; state: AppState; busy: boolean; working: boolean; save: (patch: unknown, note?: string) => Promise<void>; replace: (view: View) => void; onChange: () => void;
 }) {
   const { signIn, keyHint } = view.settings.claude;
   const [draft, setDraft] = useState('');
@@ -65,7 +65,7 @@ function SignInChoice({ view, state, busy, save, replace, onChange }: {
         <span className="muted small">Sign in with</span>
         <div className="segmented" role="radiogroup" aria-label="Sign in with">
           {(['claude-code', 'api-key'] as const).map(value => (
-            <button key={value} role="radio" aria-checked={signIn === value} disabled={busy || saving} onClick={() => save({ claude: { signIn: value } })}>
+            <button key={value} role="radio" aria-checked={signIn === value} disabled={busy || saving} onClick={() => save({ claude: { signIn: value } }, 'Checking the sign-in…')}>
               {value === 'claude-code' ? 'Claude Code' : 'API key'}
             </button>
           ))}
@@ -84,12 +84,12 @@ function SignInChoice({ view, state, busy, save, replace, onChange }: {
         <form className="key-row" onSubmit={e => { e.preventDefault(); void call(() => api.put<View>('/settings/api-key', { key: draft })); }}>
           <label className="sr" htmlFor="api-key">Anthropic API key</label>
           <input id="api-key" className="text-field" type="password" autoComplete="off" spellCheck={false} placeholder="sk-ant-…" value={draft} onChange={e => setDraft(e.target.value)} />
-          <button className="btn small" type="submit" disabled={saving || !draft.trim()}>{saving ? 'Checking…' : 'Save'}</button>
+          <button className="btn small" type="submit" disabled={saving || !draft.trim()}>{saving ? <><span className="spinner" aria-hidden="true" />Checking the key…</> : 'Save'}</button>
           {keyHint && <button className="btn quiet small" type="button" onClick={() => { setEditing(false); setDraft(''); }}>Cancel</button>}
         </form>
       ))}
       {error && <p className="error small" role="alert">{error}</p>}
-      {status && !(signIn === 'api-key' && !keyHint) && <p className={status.ok ? 'muted small' : 'error small'}>{status.ok ? (signIn === 'api-key' ? 'Connected with your API key.' : 'Signed in to Claude.') : status.message}</p>}
+      {status && !working && !saving && !(signIn === 'api-key' && !keyHint) && <p className={status.ok ? 'muted small' : 'error small'}>{status.ok ? (signIn === 'api-key' ? 'Connected with your API key.' : 'Signed in to Claude.') : status.message}</p>}
     </div>
   );
 }
@@ -102,9 +102,13 @@ export default function SettingsPage({ state, onChange }: { state: AppState; onC
 
   useEffect(() => { api.get<View>('/settings').then(setView).catch(err => setError((err as Error).message)); }, []);
 
-  const save = async (patch: unknown) => {
+  // Some changes wait on Claude (turning it on re-checks the sign-in), which
+  // takes a few seconds: say what's happening meanwhile.
+  const [working, setWorking] = useState<string | null>(null);
+  const save = async (patch: unknown, note?: string) => {
     setBusy(true);
     setError('');
+    setWorking(note ?? null);
     try {
       setView(await api.post<View>('/settings', patch));
       onChange();
@@ -112,6 +116,7 @@ export default function SettingsPage({ state, onChange }: { state: AppState; onC
       setError((err as Error).message);
     } finally {
       setBusy(false);
+      setWorking(null);
     }
   };
 
@@ -122,7 +127,8 @@ export default function SettingsPage({ state, onChange }: { state: AppState; onC
 
   if (!view) return <div className="app">{error && <p className="error" role="alert">{error}</p>}</div>;
   const { settings, presets, models } = view;
-  const enabled = settings.claude.enabled;
+  // While Claude is turning on, show it on right away; the check finishes behind the note.
+  const enabled = settings.claude.enabled || !!working;
   const preset = Object.entries(presets).find(([, p]) => same(p.models, settings.models))?.[0];
   const families = models.filter(m => m.followsLatest);
   const pinned = models.filter(m => !m.followsLatest);
@@ -160,11 +166,13 @@ export default function SettingsPage({ state, onChange }: { state: AppState; onC
                 ? 'Claude plants new sprouts and grows them as you use them.'
                 : 'Claude is off. Your tools keep working, reminders still arrive and you can import sprouts, but nothing grows and new sprouts can’t be planted. Things you tell Sprout are saved for when it’s back on.'}</p>
             </div>
-            <button className="switch" role="switch" aria-checked={enabled} disabled={busy} onClick={() => save({ claude: { enabled: !enabled } })}>
+            <button className="switch" role="switch" aria-checked={enabled} disabled={busy}
+              onClick={() => save({ claude: { enabled: !enabled } }, enabled ? undefined : 'Turning on Claude and checking your sign-in…')}>
               <span className="track" aria-hidden="true" />{enabled ? 'On' : 'Off'}
             </button>
           </div>
-          {enabled && <SignInChoice view={view} state={state} busy={busy} save={save} replace={setView} onChange={onChange} />}
+          {working && <p className="working-note" role="status"><span className="spinner" aria-hidden="true" />{working}</p>}
+          {enabled && <SignInChoice view={view} state={state} busy={busy} working={!!working} save={save} replace={setView} onChange={onChange} />}
         </section>
 
         {enabled && state.credentials?.ok && <UsageCard />}
