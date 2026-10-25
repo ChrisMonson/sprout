@@ -44,8 +44,8 @@ export function agentEnv(extra: Record<string, string> = {}): Record<string, str
 }
 
 /** Sprout uses Claude Code's sign-in (the `claude` command), which the Claude app doesn't share. */
-const SIGNED_OUT = 'Sprout uses Claude Code’s sign-in, and it has expired or isn’t set up.';
-const BAD_KEY = 'Your Anthropic API key didn’t work. Check it, or switch back to Claude Code’s sign-in.';
+const SIGNED_OUT = 'Your Claude sign-in has expired or isn’t set up.';
+const BAD_KEY = 'Your Anthropic API key didn’t work. Check it, or switch back to signing in with your Claude account.';
 const NO_KEY = 'Sprout is set to use an Anthropic API key, but none is saved yet.';
 
 export interface CredentialStatus { ok: boolean; message: string; checkedAt: number; signedOut?: boolean }

@@ -59,7 +59,7 @@ export function UsageDetails({ usage, sproutSpent }: { usage: Usage; sproutSpent
       {plan.session && <Bar label="This session" window={plan.session} />}
       {plan.week && <Bar label="This week" window={plan.week} />}
       {plan.models.filter(m => m.percent > 0).map(m => <Bar key={m.name} label={`${m.name} this week`} window={m} />)}
-      <p className="muted small" style={{ margin: 0 }}>Your whole Claude plan, including your own use of Claude and Claude Code, not just Sprout.</p>
+      <p className="muted small" style={{ margin: 0 }}>Your whole Claude plan, including your own use of Claude, not just Sprout.</p>
     </div>
   );
 }

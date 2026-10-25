@@ -76,7 +76,7 @@ export function getSettings(db: Db): Settings {
 export function updateSettings(db: Db, patch: { appearance?: Appearance; claude?: Partial<Settings['claude']>; models?: Partial<Record<Step, Partial<StepModel>>>; concurrency?: number }): Settings {
   const current = getSettings(db);
   if (patch.appearance !== undefined && !APPEARANCES.includes(patch.appearance)) throw new Error('Appearance must be system, light or dark.');
-  if (patch.claude?.signIn !== undefined && !SIGN_INS.includes(patch.claude.signIn)) throw new Error('Sign in with Claude Code or an API key.');
+  if (patch.claude?.signIn !== undefined && !SIGN_INS.includes(patch.claude.signIn)) throw new Error('Sign in with your Claude account or an API key.');
   const next: Settings = {
     appearance: patch.appearance ?? current.appearance,
     claude: { ...current.claude, ...patch.claude },

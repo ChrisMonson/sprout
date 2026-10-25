@@ -66,13 +66,13 @@ function SignInChoice({ view, state, busy, working, save, replace, onChange }: {
         <div className="segmented" role="radiogroup" aria-label="Sign in with">
           {(['claude-code', 'api-key'] as const).map(value => (
             <button key={value} role="radio" aria-checked={signIn === value} disabled={busy || saving} onClick={() => save({ claude: { signIn: value } }, 'Checking the sign-in…')}>
-              {value === 'claude-code' ? 'Claude Code' : 'API key'}
+              {value === 'claude-code' ? 'Claude account' : 'API key'}
             </button>
           ))}
         </div>
       </div>
       <p className="muted small">{signIn === 'claude-code'
-        ? 'Uses your Claude plan, through the sign-in of Claude Code (the claude command).'
+        ? 'Uses your Claude plan. You sign in once with your Claude account.'
         : 'Billed per use to your Anthropic Console account, instead of your Claude plan. The key is kept in your Mac’s keychain.'}</p>
       {signIn === 'api-key' && (keyHint && !editing ? (
         <div className="key-row">

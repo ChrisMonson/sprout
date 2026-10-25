@@ -256,9 +256,9 @@ function GrowNeedsClaude({ state, onChange }: { state: AppState; onChange: () =>
             </>
           ) : (
             <>
-              <p className="muted" style={{ margin: 0 }}>Sign in to Claude Code with your Claude plan, or use an Anthropic API key instead (billed per use).</p>
+              <p className="muted" style={{ margin: 0 }}>Sign in with your Claude account to use your Claude plan, or use an Anthropic API key instead (billed per use).</p>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
-                {state.credentials?.signedOut !== false && <button className="btn" onClick={() => api.post('/sign-in')}>Sign in to Claude Code</button>}
+                {state.credentials?.signedOut !== false && <button className="btn" onClick={() => api.post('/sign-in')}>Sign in with your Claude account</button>}
                 <a className="btn quiet" href="#/settings">Use an API key</a>
               </div>
               <p className="muted small" style={{ margin: 0 }}>Signing in opens Terminal. Sprout notices when you’re done.</p>
@@ -304,14 +304,14 @@ function SetupBanners({ state, onChange, quiet = false }: { state: AppState; onC
       )}
       {signedOut && quiet && state.signIn !== 'api-key' && (
         <p className="setup-note muted" role="status">
-          Sign in to Claude Code to grow new sprouts and keep them growing.
+          Sign in with your Claude account to grow new sprouts and keep them growing.
           {state.credentials!.signedOut && <button className="link-btn" onClick={() => api.post('/sign-in')}>Sign in</button>}
           <button className="link-btn" onClick={recheck} disabled={checking}>{checking ? 'Checking…' : 'I’ve signed in'}</button>
         </p>
       )}
       {signedOut && !quiet && (
         <div className="banner" role="status" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
-          <span style={{ flex: '1 1 240px' }}>{state.credentials!.message}{state.credentials!.signedOut ? ' Sign in opens Terminal on Claude Code’s sign-in; Sprout notices when you’re done.' : ''}</span>
+          <span style={{ flex: '1 1 240px' }}>{state.credentials!.message}{state.credentials!.signedOut ? ' Sign in opens Terminal to sign in to your Claude account; Sprout notices when you’re done.' : ''}</span>
           {state.credentials!.signedOut && <button className="btn small" onClick={() => api.post('/sign-in')}>Sign in</button>}
           {state.signIn === 'api-key' && <a className="btn small" href="#/settings">Settings</a>}
           <button className="btn quiet small" onClick={recheck} disabled={checking}>{checking ? 'Checking…' : 'I’ve signed in'}</button>
