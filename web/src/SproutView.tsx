@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, timeOf, useStream, type AppState, type Bud, type SproutDetail, type Target } from './api.ts';
 import { Bud as BudIcon, Check, ChevronLeft, Close, Cog, Expand, Grow, History, Leaf, Send, Shrink, Target as TargetIcon } from './icons.tsx';
 import { go } from './App.tsx';
+import { UsageMeter } from './Usage.tsx';
 
 interface Toast { text: string; undoGrowthId?: number }
 
@@ -129,6 +130,7 @@ export default function SproutView({ id, full, summary, claude }: { id: string; 
           </span>
         )}
         <div className="right">
+          {claude && <UsageMeter sproutSpent={detail.spent} />}
           {claude && <button className="switch" role="switch" aria-checked={sprout.growing} onClick={async () => {
             await api.post(`/sprouts/${id}/growing`, { on: !sprout.growing });
             showToast({ text: sprout.growing ? `Growth is resting. ${sprout.name || 'Your tool'} won’t change on its own, but Sprout will still do what you ask.` : 'Growing again.' });
@@ -345,6 +347,9 @@ function HistoryDrawer({ detail, onClose, onRewind, onCancelNotification }: {
         <h2>History</h2>
         <button className="icon-btn" aria-label="Close history" style={{ background: 'var(--gh-hover)', width: 40, height: 40 }} onClick={onClose}><Close size={16} /></button>
       </header>
+      {!!detail.spent && (
+        <p className="muted" style={{ margin: 0, fontSize: 14 }}>Growing this sprout has used about ${detail.spent.toFixed(2)} of Claude so far, at API prices.</p>
+      )}
       {detail.notifications.length > 0 && (
         <section>
           <h3>Coming up</h3>

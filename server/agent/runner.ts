@@ -15,6 +15,7 @@ import { checkToolUse } from './confine.ts';
 import { createSproutTools, type TurnContext } from './tools.ts';
 import { resolveStep } from './models.ts';
 import { getSettings } from '../settings.ts';
+import { noteRateLimit, refreshPlanUsage } from '../usage.ts';
 
 export type TurnKind = 'plant' | 'grow' | 'observe';
 
@@ -153,6 +154,7 @@ export async function runTurn(spec: TurnSpec): Promise<TurnOutcome> {
         }
       } else if (msg.type === 'rate_limit_event') {
         const info = msg.rate_limit_info;
+        noteRateLimit(info);
         if (info.status === 'rejected') {
           const resetsAt = info.resetsAt ? (info.resetsAt < 1e12 ? info.resetsAt * 1000 : info.resetsAt) : Date.now() + 30 * 60_000;
           outcome = { ...outcome, status: 'rate_limited', resetsAt };
@@ -179,6 +181,8 @@ export async function runTurn(spec: TurnSpec): Promise<TurnOutcome> {
   if (!outcome.summary) outcome.summary = lastText;
   db.prepare('UPDATE turns SET ended_at = ?, status = ?, cli_version = ?, cost_usd = ?, num_turns = ?, summary = ? WHERE id = ?')
     .run(Date.now(), outcome.status, cliVersion, cost, numTurns, outcome.summary.slice(0, 4000), turnId);
+  bus.send({ type: 'usage' }); // spend changed; plan windows too
+  void refreshPlanUsage(db);
   bus.send({ type: 'turn', sproutId, turnId, kind, status: outcome.status });
   return outcome;
 }

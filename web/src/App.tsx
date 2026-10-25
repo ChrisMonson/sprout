@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type DragEve
 import { flushSync } from 'react-dom';
 import { api, useStream, type AppState } from './api.ts';
 import { Cog, Leaf, Seed, Seedling } from './icons.tsx';
+import { nearLimit, useUsage } from './Usage.tsx';
 import NewSprout from './NewSprout.tsx';
 import SproutView from './SproutView.tsx';
 import SettingsPage from './Settings.tsx';
@@ -131,6 +132,7 @@ function Home({ state, onRefresh }: { state: AppState; onRefresh: () => void }) 
           </div>
         </div>
         <SetupBanners state={state} onChange={onRefresh} quiet />
+        {claudeReady(state) && <UsageWarning />}
         {importError && <div className="banner" role="alert">{importError}</div>}
         {state.pausedUntil > Date.now() && state.pausedUntil - Date.now() < 7 * 24 * 3600_000 && (
           <div className="banner" role="status">Sprout is resting until {new Date(state.pausedUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} (Claude usage limit). Your tools still work.</div>
@@ -209,6 +211,15 @@ function RemovedRow({ sprout }: { sprout: AppState['removed'][number] }) {
  */
 export function claudeReady(state: AppState) {
   return state.claudeEnabled !== false && (!state.credentials || state.credentials.ok);
+}
+
+/** Only near the end of a plan's session window: growing may pause until it resets. */
+function UsageWarning() {
+  const usage = useUsage();
+  if (!nearLimit(usage)) return null;
+  const session = usage!.plan!.session!;
+  const until = session.resetsAt ? ` until ${new Date(session.resetsAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : '';
+  return <p className="setup-note muted" role="status">Your Claude session is {session.percent}% used{until}; growing may pause if it runs out. Your tools keep working.</p>;
 }
 
 /**

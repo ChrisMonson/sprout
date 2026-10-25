@@ -16,6 +16,7 @@ import { androidTools, listDevices, listEmulators, startEmulator } from './harve
 import { checkPortability } from './harvest/check.ts';
 import { apkPath, harvestState, startHarvest } from './harvest/harvest.ts';
 import { sproutPaths } from './paths.ts';
+import { refreshPlanUsage, sproutSpend, usage } from './usage.ts';
 import { clearCustomIcon, drawIcon, hasCustomIcon, iconFile, iconPng, iconVersion, isDrawing, setCustomIcon } from './icons.ts';
 import { platform } from './platform.ts';
 import { addNote, addRequestNote } from './memory.ts';
@@ -184,6 +185,7 @@ export function createApi(db: Db, host: Host) {
       whispers: parse(db.prepare('SELECT id, ts, text, target, status FROM whispers WHERE sprout_id = ? ORDER BY id DESC LIMIT 30').all(row.id) as Record<string, unknown>[], 'target'),
       turns: db.prepare('SELECT id, kind, reason, started_at, ended_at, status, summary, cost_usd FROM turns WHERE sprout_id = ? ORDER BY id DESC LIMIT 10').all(row.id),
       notifications: upcoming(db, row.id).map(n => ({ id: n.id, title: n.title, body: n.body, dueAt: n.due_at })),
+      spent: sproutSpend(db, row.id),
     });
   });
 
@@ -292,6 +294,14 @@ export function createApi(db: Db, host: Host) {
     q.update(db, row.id, { growing: on ? 1 : 0 });
     bus.send({ type: 'sprout', sproutId: row.id });
     return c.json({ ok: true });
+  });
+
+  // ---- Claude usage ----
+
+  /** ?refresh=1 asks Claude for fresh plan numbers first (at most once a minute). */
+  app.get('/usage', async c => {
+    if (c.req.query('refresh')) await refreshPlanUsage(db);
+    return c.json(usage(db));
   });
 
   // ---- icons ----

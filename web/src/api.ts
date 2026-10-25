@@ -25,6 +25,8 @@ export interface SproutDetail {
   whispers: Whisper[];
   turns: { id: number; kind: string; reason: string | null; status: string; summary: string | null; started_at: number }[];
   notifications: { id: number; title: string; body: string | null; dueAt: number }[];
+  /** Estimated cost of every agent turn this sprout has had. */
+  spent?: number;
 }
 
 export type BusMessage =
@@ -34,7 +36,8 @@ export type BusMessage =
   | { type: 'toast'; sproutId: string; text: string; undoGrowthId?: number }
   | { type: 'notification'; sproutId: string; title: string; body: string }
   | { type: 'harvest'; sproutId: string }
-  | { type: 'setup' };
+  | { type: 'setup' }
+  | { type: 'usage' };
 
 async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`/api${path}`, {

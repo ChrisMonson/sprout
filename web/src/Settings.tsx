@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, type AppState } from './api.ts';
 import { ChevronLeft, Leaf } from './icons.tsx';
+import { UsageDetails, useUsage } from './Usage.tsx';
 
 type Step = 'questions' | 'plant' | 'grow' | 'observe';
 interface StepModel { model: string; effort: string | null }
@@ -22,6 +23,17 @@ const STEPS: { step: Step; label: string; what: string }[] = [
 
 const same = (a: Record<Step, StepModel>, b: Record<Step, StepModel>) =>
   STEPS.every(({ step }) => a[step].model === b[step].model && (a[step].effort ?? null) === (b[step].effort ?? null));
+
+function UsageCard() {
+  const usage = useUsage();
+  if (!usage) return null;
+  return (
+    <section className="settings-card">
+      <h2>Usage</h2>
+      <UsageDetails usage={usage} />
+    </section>
+  );
+}
 
 /** Claude Code's sign-in (your Claude plan), or an Anthropic API key (pay per use) kept in the keychain. */
 function SignInChoice({ view, state, busy, save, replace, onChange }: {
@@ -154,6 +166,8 @@ export default function SettingsPage({ state, onChange }: { state: AppState; onC
           </div>
           {enabled && <SignInChoice view={view} state={state} busy={busy} save={save} replace={setView} onChange={onChange} />}
         </section>
+
+        {enabled && state.credentials?.ok && <UsageCard />}
 
         {enabled && (
           <section className="settings-card">

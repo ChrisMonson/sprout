@@ -53,6 +53,7 @@ For development, `npm run desktop:dev` runs the app unpackaged, as **Sprout Dev*
 The cog on the home page opens Settings:
 - **Use Claude** turns Claude on or off. With it off, Sprout never contacts Claude: your tools keep running, reminders arrive and you can import sprouts, but nothing grows and new sprouts can't be planted. Whispers wait until it's back on.
 - **Sign in with**: Claude Code (your Claude plan, through the `claude` command's sign-in) or an Anthropic API key, billed per use. The key is kept in the macOS keychain (service "Sprout"); settings keep only its last four characters.
+- **Usage**: on a Claude plan, how much of your session (5-hour) and weekly limits are used, account-wide, with reset times; with an API key, what Sprout has spent today and this month. The same readout sits in each sprout's top bar, the home page mentions it only past 80% of a session, and History shows what growing that sprout has cost. Plan numbers come from the Agent SDK's experimental usage call and from rate-limit updates during turns (`server/usage.ts`).
 - **Models** come live from your Claude account. Pick a preset (Balanced, Thorough, Light) or a model and effort for each step (questions, planting, growing, observing). A family like `opus` always uses its newest version; a specific version stays pinned, and falls back to its family if your account stops offering it. Each turn records the exact model that ran.
 - **Agents working at once**: 1 to 4.
 

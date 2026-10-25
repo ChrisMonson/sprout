@@ -12,6 +12,7 @@ import { ensureRuntime, hasGit } from './runtime.ts';
 import { createApi } from './api.ts';
 import { startScheduler } from './scheduler.ts';
 import { drawMissingIcons } from './icons.ts';
+import { refreshPlanUsage } from './usage.ts';
 import { stopAll } from './sprouts.ts';
 import { acquireLock, releaseLock } from './lock.ts';
 import { checkCredentials, openSignIn, useSignIn, type CredentialStatus } from './agent/credentials.ts';
@@ -70,7 +71,10 @@ export async function startGreenhouse(options: GreenhouseOptions): Promise<Green
       log(credentials.ok ? 'Claude: signed in.' : `Claude: ${credentials.message}`);
       bus.send({ type: 'setup' });
     }
-    if (credentials.ok) void listModels(true).catch(() => {});
+    if (credentials.ok) {
+      void listModels(true).catch(() => {});
+      void refreshPlanUsage(db, true);
+    }
     else if (credentials.signedOut) watching = setTimeout(() => void recheck(), Date.now() < eagerUntil ? 5_000 : 20_000);
     return credentials;
   };

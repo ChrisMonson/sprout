@@ -19,6 +19,11 @@ export function useSignIn(method: SignIn) {
   signIn = method;
 }
 
+/** Claude Code's sign-in or an API key, unless the environment forces a key. */
+export function signInMethod(): SignIn {
+  return process.env.SPROUT_ANTHROPIC_API_KEY ? 'api-key' : signIn;
+}
+
 const PASS_THROUGH = ['HOME', 'PATH', 'USER', 'LOGNAME', 'LANG', 'LC_ALL', 'TMPDIR', 'SHELL', 'CLAUDE_CODE_OAUTH_TOKEN'];
 
 /** The environment an agent process gets: nothing from a parent Claude session leaks in. */

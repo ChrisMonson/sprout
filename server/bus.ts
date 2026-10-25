@@ -10,7 +10,9 @@ export type BusMessage =
   | { type: 'notification'; sproutId: string; title: string; body: string }
   | { type: 'harvest'; sproutId: string }
   /** Claude sign-in (or other setup) changed. */
-  | { type: 'setup' };
+  | { type: 'setup' }
+  /** New Claude usage numbers. */
+  | { type: 'usage' };
 
 class Bus extends EventEmitter {
   send(msg: BusMessage) {
