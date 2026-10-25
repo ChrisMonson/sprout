@@ -31,23 +31,41 @@ export async function ensureRuntime(log: (line: string) => void = console.log) {
   const current = existsSync(installedPkg) ? readFileSync(installedPkg, 'utf8') : '';
   const missing = Object.keys(JSON.parse(wanted).dependencies).some(dep => !existsSync(join(paths.nodeModules, dep, 'package.json')));
   if (wanted !== current || missing) {
-    // Only a prebuilt set made from this same package.json; an older one (say,
-    // left from packaging before a dependency was added) would be missing things.
-    const prebuiltPkg = join(paths.prebuiltModules, '..', 'package.json');
-    if (existsSync(paths.prebuiltModules) && existsSync(prebuiltPkg) && readFileSync(prebuiltPkg, 'utf8') === wanted) {
+    // npm installs from the package.json in the home folder, so it goes there first.
+    writeFileSync(installedPkg, wanted);
+    if (usePrebuilt(wanted)) {
       log('Setting up the sprout runtime…');
       rmSync(paths.nodeModules, { recursive: true, force: true });
       // Symlinks stay relative, so @sprout/greenhouse points at this home's .runtime/sdk.
       cpSync(paths.prebuiltModules, paths.nodeModules, { recursive: true, verbatimSymlinks: true });
     } else {
       log('Installing the sprout runtime (first run only)…');
-      await run('npm', ['install', '--no-audit', '--no-fund', '--loglevel=error'], { cwd: paths.home, maxBuffer: 32 * 1024 * 1024 });
+      try {
+        await run('npm', ['install', '--no-audit', '--no-fund', '--loglevel=error'], { cwd: paths.home, maxBuffer: 32 * 1024 * 1024 });
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+          throw new Error('Setting up the sprout runtime needs npm, which isn’t installed. Install Node.js from nodejs.org, or use the Sprout app, which brings its own.');
+        }
+        throw err;
+      }
     }
-    writeFileSync(installedPkg, wanted);
     log('Sprout runtime ready.');
   }
 
   if (inElectron) writeNodeShim();
+}
+
+/**
+ * Use the dependencies shipped with the app? The packaged app always does (it
+ * has no npm, and its set was built for it). Elsewhere, only a set built from
+ * this same package.json: an older one, left from packaging before a
+ * dependency was added, would be missing things.
+ */
+function usePrebuilt(wanted: string): boolean {
+  if (!existsSync(paths.prebuiltModules)) return false;
+  if (process.env.SPROUT_PACKAGED === '1') return true;
+  const built = join(paths.prebuiltModules, '..', 'package.json');
+  return existsSync(built) && readFileSync(built, 'utf8') === wanted;
 }
 
 /** A `node` command that runs the app's own binary as Node. */

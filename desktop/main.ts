@@ -63,7 +63,7 @@ function spawnGreenhouse() {
   const child = utilityProcess.fork(join(import.meta.dirname, 'greenhouse.mjs'), [], {
     serviceName: 'Sprout Greenhouse',
     stdio: 'pipe',
-    env: { ...process.env, SPROUT_RESOURCES: resources, SPROUT_PORT: String(port), SPROUT_HOME: home },
+    env: { ...process.env, SPROUT_RESOURCES: resources, SPROUT_PORT: String(port), SPROUT_HOME: home, SPROUT_PACKAGED: app.isPackaged ? '1' : '' },
   });
   greenhouse = child;
   child.stdout?.on('data', chunk => { log.write(chunk); process.stdout.write(chunk); });

@@ -17,6 +17,8 @@ extraResources:
   - { from: briefs, to: briefs }
   - { from: dist/web, to: dist/web }
   - { from: build/runtime/node_modules, to: build/runtime/node_modules }
+  # Says which package list the shipped node_modules were built from.
+  - { from: build/runtime/package.json, to: build/runtime/package.json }
   # node_modules/@sprout/greenhouse links to ../../.runtime/sdk
   - { from: build/runtime/.runtime, to: build/runtime/.runtime }
   - { from: desktop/assets, to: desktop/assets }
