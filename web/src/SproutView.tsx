@@ -75,12 +75,13 @@ export default function SproutView({ id, full, summary, claude }: { id: string; 
   const bud = detail?.buds[0];
   const busy = !!detail?.sprout.busy;
   useEffect(() => {
-    // A new suggestion or question folds itself away after it has been on
-    // screen for a while (it stays hidden while the agent is working).
-    if (!bud || busy) return;
+    // A new suggestion folds itself away after it has been on screen for a
+    // while (it stays hidden while the agent is working). A question waits for
+    // an answer, so it stays until it's answered or closed.
+    if (!bud || busy || bud.kind === 'question') return;
     const t = setTimeout(() => setFoldedBuds(f => f.includes(bud.id) ? f : [...f, bud.id]), 15_000);
     return () => clearTimeout(t);
-  }, [bud?.id, busy]);
+  }, [bud?.id, bud?.kind, busy]);
 
   if (!detail) return <div className="app" />;
   const { sprout } = detail;
