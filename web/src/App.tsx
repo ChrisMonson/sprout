@@ -154,9 +154,9 @@ function Home({ state, onRefresh }: { state: AppState; onRefresh: () => void }) 
               style={s.id === transitionSprout ? { viewTransitionName: `sprout-${s.id}` } : undefined}>
               <span className="card-head">
                 {!!s.icon && <img className="card-icon" src={`/api/sprouts/${s.id}/icon.svg?v=${s.icon}`} alt="" draggable={false} />}
-                <span className="n" style={s.id === transitionSprout ? { viewTransitionName: `sprout-name-${s.id}` } : undefined}>{s.name || 'Unnamed sprout'}</span>
+                <span className="n" title={s.name || undefined} style={s.id === transitionSprout ? { viewTransitionName: `sprout-name-${s.id}` } : undefined}>{s.name || 'Unnamed sprout'}</span>
               </span>
-              <span className="s">{s.seed}</span>
+              <span className="s" title={s.seed}>{s.seed}</span>
               {(claudeReady(state) || s.busy || s.status !== 'ready') && <span className={`status ${statusGlyph(s).tone}`}>{statusGlyph(s).icon}{statusText(s)}</span>}
             </a>
           ))}
