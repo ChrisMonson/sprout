@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { flushSync } from 'react-dom';
 import { api, type Feel, type NextQuestion } from './api.ts';
-import { Leaf, Send } from './icons.tsx';
+import { Clip, Leaf, Send } from './icons.tsx';
+import { DropZone, FileChips, postFiles, useFiles } from './files.tsx';
 import { go } from './App.tsx';
 
 type Line = { who: 'you' | 'sprout'; text: string };
@@ -23,6 +24,9 @@ export default function NewSprout({ feels, setup, canGoHome, claude = true }: { 
   const [error, setError] = useState('');
   const [feel, setFeel] = useState(feels[0]?.id ?? 'calm');
   const [feelNote, setFeelNote] = useState('');
+  // Files to plant with (art, sounds, data): sent once the sprout exists.
+  const attached = useFiles();
+  const picker = useRef<HTMLInputElement>(null);
   const bottom = useRef<HTMLDivElement>(null);
   const retry = useRef<() => void>(() => {});
 
@@ -57,6 +61,7 @@ export default function NewSprout({ feels, setup, canGoHome, claude = true }: { 
     try {
       const res = await api.post<{ id: string; next: NextQuestion }>('/seed', { seed: text });
       setId(res.id);
+      if (attached.files.length) await postFiles(`/sprouts/${res.id}/uploads`, {}, attached.files);
       take(res.next);
     } catch (err) {
       setError((err as Error).message);
@@ -104,11 +109,16 @@ export default function NewSprout({ feels, setup, canGoHome, claude = true }: { 
             <h1 className="title-xl">What do you want to grow?</h1>
             <p className="lede">Describe a tool you wish you had, in your own words. It starts small and grows the more you use it.</p>
             {setup}
+            <DropZone label="Drop files to plant with" onFiles={attached.add}>{null}</DropZone>
             <div className="composer big" style={{ width: '100%' }}>
+              <button className="icon-btn attach" type="button" aria-label="Attach files" title="Attach files to plant with: art, sounds, data (or drop them on the page)" onClick={() => picker.current?.click()}><Clip /></button>
+              <input ref={picker} type="file" multiple hidden onChange={e => { attached.add(e.target.files); e.target.value = ''; }} />
               <label htmlFor="seed" className="sr">Describe the tool you want</label>
               <input id="seed" autoFocus value={seed} onChange={e => setSeed(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void plantSeed(); }} placeholder="Something to keep track of my sourdough starter" />
               <button className="btn" onClick={plantSeed} disabled={!seed.trim() || !claude}>Plant</button>
             </div>
+            <FileChips files={attached.files} onRemove={attached.remove} />
+            {attached.problem && <p className="error small" style={{ margin: 0 }}>{attached.problem}</p>}
             <div className="chips" style={{ justifyContent: 'center' }}>
               {EXAMPLES.map(x => <button key={x} className="chip" onClick={() => setSeed(x)}>{x}</button>)}
             </div>

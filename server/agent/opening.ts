@@ -9,6 +9,7 @@ import { q, type Db } from '../db.ts';
 import { digest } from '../friction.ts';
 import { journalTail, readUnderstanding, takeNotes } from '../memory.ts';
 import { feelById } from '../feel.ts';
+import { describeUpload, uploadsFor } from '../uploads.ts';
 
 export function brief(kind: 'plant' | 'grow' | 'observe'): string {
   return [readFileSync(join(paths.briefs, 'base.md'), 'utf8'), readFileSync(join(paths.briefs, `${kind}.md`), 'utf8')].join('\n\n');
@@ -39,6 +40,7 @@ export function plantOpening(db: Db, sproutId: string, minutes: number): string 
     convo.length ? `## What they told you\n${convo.map(e => `Q: ${e.q}\nA: ${e.a}`).join('\n\n')}` : '',
     `## How it should feel\n${feelById(feel.preset).name}${feel.note ? `, in their words: "${feel.note}"` : ''}`,
     row.name ? `They'll see it called "${row.name}" unless you rename it.` : '',
+    filesSection(uploadsFor(db, sproutId, 'planting').map(u => `- ${describeUpload(sproutId, u)}`)),
   ].filter(Boolean).join('\n\n');
 }
 
@@ -56,6 +58,16 @@ export function collectAsks(db: Db, sproutId: string): GrowAsks {
   };
 }
 
+/** The files that came with one whisper, listed under it. */
+function filesWith(db: Db, sproutId: string, whisperId: number): string {
+  const files = uploadsFor(db, sproutId, [whisperId]);
+  return files.length ? `\n  With files (read-only; see "Files they give you" in your brief):\n${files.map(u => `  - ${describeUpload(sproutId, u)}`).join('\n')}` : '';
+}
+
+function filesSection(lines: string[]): string {
+  return lines.length ? `## Files they gave you\nRead-only; see "Files they give you" in your brief.\n${lines.join('\n')}` : '';
+}
+
 function describeTarget(target: string | null): string {
   if (!target) return '';
   const t = JSON.parse(target) as { sproutId?: string; path?: string; text?: string };
@@ -70,7 +82,7 @@ export function growOpening(db: Db, sproutId: string, minutes: number, reason: s
   return [
     header(minutes, reason),
     row.growing ? '' : '## Growth is turned off\nThe person turned growth off, so do exactly what they asked below and nothing else: no fixes or improvements they did not ask for, and no suggestions (propose_bud).',
-    asks.whispers.length ? `## What they said\n${asks.whispers.map(w => `- "${w.text}"${describeTarget(w.target)}`).join('\n')}` : '',
+    asks.whispers.length ? `## What they said\n${asks.whispers.map(w => `- "${w.text}"${describeTarget(w.target)}${filesWith(db, sproutId, w.id)}`).join('\n')}` : '',
     asks.buds.length ? `## Suggestions they said yes to\n${asks.buds.map(b => `- ${b.text}`).join('\n')}` : '',
     asks.answers.length ? `## Answers to your questions\n${asks.answers.map(a => `- You asked "${a.text}". They said: "${a.answer}"`).join('\n')}` : '',
     notes ? `## Notes from the greenhouse\n${notes}` : '',

@@ -38,6 +38,18 @@ CREATE TABLE IF NOT EXISTS whispers (
   status TEXT NOT NULL DEFAULT 'new',
   turn_id INTEGER
 );
+-- Files the person gave a sprout (with a whisper, or when planting: whisper_id NULL).
+-- The files themselves are in the sprout's uploads folder, outside its code.
+CREATE TABLE IF NOT EXISTS uploads (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  sprout_id TEXT NOT NULL,
+  whisper_id INTEGER,
+  ts INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  file TEXT NOT NULL,
+  size INTEGER NOT NULL,
+  type TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS buds (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   sprout_id TEXT NOT NULL,

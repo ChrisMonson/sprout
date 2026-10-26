@@ -50,12 +50,26 @@ export function deleteForever(db: Db, id: string) {
   if (row?.status !== 'removed') throw new Error('Remove the sprout first.');
   rmSync(removedDir(id), { recursive: true, force: true });
   rmSync(join(paths.turns, id), { recursive: true, force: true });
-  for (const table of ['events', 'whispers', 'buds', 'turns', 'growth', 'notifications']) {
+  for (const table of ['events', 'whispers', 'buds', 'turns', 'growth', 'notifications', 'uploads']) {
     db.prepare(`DELETE FROM ${table} WHERE sprout_id = ?`).run(id);
   }
   db.prepare('DELETE FROM removed WHERE sprout_id = ?').run(id);
   db.prepare('DELETE FROM sprouts WHERE id = ?').run(id);
   bus.send({ type: 'sprout', sproutId: id });
+}
+
+/**
+ * Sprouts someone started describing but never planted (they left the Grow
+ * page): after a day, forget them and any files they were given.
+ */
+export function forgetAbandonedSeeds(db: Db, now = Date.now()) {
+  const stale = db.prepare("SELECT id FROM sprouts WHERE status = 'seeding' AND created_at < ?").all(now - 24 * 3600_000) as { id: string }[];
+  for (const { id } of stale) {
+    rmSync(sproutPaths(id).base, { recursive: true, force: true });
+    db.prepare('DELETE FROM uploads WHERE sprout_id = ?').run(id);
+    db.prepare('DELETE FROM sprouts WHERE id = ?').run(id);
+  }
+  return stale.length;
 }
 
 export function listRemoved(db: Db): RemovedSprout[] {

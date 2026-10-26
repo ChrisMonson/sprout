@@ -50,6 +50,7 @@ const LOOK_TOOLS = ['Read', 'Glob', 'Grep'];
 export async function runTurn(spec: TurnSpec): Promise<TurnOutcome> {
   const { db, sproutId, kind } = spec;
   const p = sproutPaths(sproutId);
+  mkdirSync(p.uploads, { recursive: true }); // the sandbox only allows reading folders that exist
   const canBuild = kind !== 'observe';
   // The step's chosen model (a family alias or a pinned version), from Greenhouse Settings.
   const { model, effort } = resolveStep(kind, getSettings(db).models[kind]);
@@ -106,7 +107,7 @@ export async function runTurn(spec: TurnSpec): Promise<TurnOutcome> {
         mcpServers: { sprout: createSproutTools(ctx) },
         permissionMode: 'default',
         canUseTool: async (name, input) => {
-          const verdict = checkToolUse(name, input, p.work, p.live);
+          const verdict = checkToolUse(name, input, p.work, p.live, [p.uploads]);
           if (!verdict.ok) return { behavior: 'deny', message: verdict.reason };
           if (allowed.has(name) || name.startsWith('mcp__sprout__')) return { behavior: 'allow', updatedInput: input };
           return { behavior: 'deny', message: `${name} is not available in Sprout.` };
@@ -115,7 +116,7 @@ export async function runTurn(spec: TurnSpec): Promise<TurnOutcome> {
           PreToolUse: [{
             hooks: [async input => {
               if (input.hook_event_name !== 'PreToolUse') return {};
-              const verdict = checkToolUse(input.tool_name, (input.tool_input ?? {}) as Record<string, unknown>, p.work, p.live);
+              const verdict = checkToolUse(input.tool_name, (input.tool_input ?? {}) as Record<string, unknown>, p.work, p.live, [p.uploads]);
               if (verdict.ok) return {};
               return { hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: verdict.reason } };
             }],
@@ -130,7 +131,7 @@ export async function runTurn(spec: TurnSpec): Promise<TurnOutcome> {
           filesystem: {
             allowWrite: [p.work],
             denyRead: ['~/'],
-            allowRead: [p.work, paths.nodeModules, paths.runtime, join(paths.home, 'package.json'), ...appBundle()],
+            allowRead: [p.work, p.uploads, paths.nodeModules, paths.runtime, join(paths.home, 'package.json'), ...appBundle()],
           },
         },
       },

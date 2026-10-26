@@ -17,6 +17,7 @@ import { checkPortability } from './harvest/check.ts';
 import { apkPath, harvestState, startHarvest } from './harvest/harvest.ts';
 import { sproutPaths } from './paths.ts';
 import { refreshPlanUsage, sproutSpend, usage } from './usage.ts';
+import { clearUnused, deleteUpload, listUploads, saveUploads, uploadsFor } from './uploads.ts';
 import { clearCustomIcon, drawIcon, hasCustomIcon, iconFile, iconPng, iconVersion, isDrawing, setCustomIcon } from './icons.ts';
 import { platform } from './platform.ts';
 import { addNote, addRequestNote } from './memory.ts';
@@ -169,6 +170,12 @@ export function createApi(db: Db, host: Host) {
 
   // ---- a sprout ----
 
+  /** Each whisper with the names of the files that came with it. */
+  const withFiles = (whispers: Record<string, unknown>[], sproutId: string) => {
+    const files = uploadsFor(db, sproutId, whispers.map(w => Number(w.id)));
+    return whispers.map(w => ({ ...w, files: files.filter(f => f.whisper_id === w.id).map(f => ({ name: f.name, size: f.size })) }));
+  };
+
   app.get('/sprouts/:id', c => {
     const row = sproutOr404(c.req.param('id'));
     const parse = (rows: Record<string, unknown>[], ...keys: string[]) => rows.map(r => {
@@ -182,7 +189,7 @@ export function createApi(db: Db, host: Host) {
       },
       growth: db.prepare('SELECT id, ts, kind, title, detail, rewindable FROM growth WHERE sprout_id = ? ORDER BY id DESC').all(row.id),
       buds: parse(db.prepare("SELECT id, ts, kind, text, why, suggestions, status FROM buds WHERE sprout_id = ? AND status = 'proposed' ORDER BY id").all(row.id) as Record<string, unknown>[], 'suggestions'),
-      whispers: parse(db.prepare('SELECT id, ts, text, target, status FROM whispers WHERE sprout_id = ? ORDER BY id DESC LIMIT 30').all(row.id) as Record<string, unknown>[], 'target'),
+      whispers: withFiles(parse(db.prepare('SELECT id, ts, text, target, status FROM whispers WHERE sprout_id = ? ORDER BY id DESC LIMIT 30').all(row.id) as Record<string, unknown>[], 'target'), row.id),
       turns: db.prepare('SELECT id, kind, reason, started_at, ended_at, status, summary, cost_usd FROM turns WHERE sprout_id = ? ORDER BY id DESC LIMIT 10').all(row.id),
       notifications: upcoming(db, row.id).map(n => ({ id: n.id, title: n.title, body: n.body, dueAt: n.due_at })),
       spent: sproutSpend(db, row.id),
@@ -246,13 +253,58 @@ export function createApi(db: Db, host: Host) {
     return c.json({ cancelled });
   });
 
+  /** JSON, or a form with text, target (JSON) and files, when files come along. */
+  const readWhisper = async (c: { req: { header(name: string): string | undefined; json<T>(): Promise<T>; parseBody(o: { all: true }): Promise<Record<string, unknown>> } }) => {
+    if (!c.req.header('content-type')?.startsWith('multipart/form-data')) {
+      const { text, target } = await c.req.json<{ text: string; target?: unknown }>();
+      return { text, target, files: [] as File[] };
+    }
+    const body = await c.req.parseBody({ all: true });
+    const files = ([] as unknown[]).concat(body.files ?? []).filter((f): f is File => f instanceof File && f.size > 0);
+    const target = typeof body.target === 'string' && body.target ? JSON.parse(body.target) : undefined;
+    return { text: String(body.text ?? ''), target, files };
+  };
+
   app.post('/sprouts/:id/whisper', async c => {
     const row = sproutOr404(c.req.param('id'));
-    const { text, target } = await c.req.json<{ text: string; target?: unknown }>();
-    if (!text?.trim()) throw new HttpError(400, 'Say something first.');
-    db.prepare('INSERT INTO whispers (sprout_id, ts, text, target) VALUES (?, ?, ?, ?)').run(row.id, Date.now(), text.trim().slice(0, 1000), target ? JSON.stringify(target) : null);
+    const { text, target, files } = await readWhisper(c);
+    if (!text?.trim() && !files.length) throw new HttpError(400, 'Say something first.');
+    const said = text?.trim() || (files.length === 1 ? 'Here’s a file.' : 'Here are some files.');
+    const { lastInsertRowid } = db.prepare('INSERT INTO whispers (sprout_id, ts, text, target) VALUES (?, ?, ?, ?)')
+      .run(row.id, Date.now(), said.slice(0, 1000), target ? JSON.stringify(target) : null);
+    try {
+      await saveUploads(db, row.id, files, Number(lastInsertRowid));
+    } catch (err) {
+      db.prepare('DELETE FROM whispers WHERE id = ?').run(lastInsertRowid);
+      throw new HttpError(400, (err as Error).message);
+    }
     bus.send({ type: 'sprout', sproutId: row.id });
     return c.json({ ok: true, growing: !!row.growing, claude: claudeEnabled(db) });
+  });
+
+  app.get('/sprouts/:id/uploads', c => c.json(listUploads(db, sproutOr404(c.req.param('id')).id)));
+
+  app.delete('/sprouts/:id/uploads/:uploadId', c => {
+    const row = sproutOr404(c.req.param('id'));
+    try { deleteUpload(db, row.id, Number(c.req.param('uploadId'))); } catch (err) { throw new HttpError(404, (err as Error).message); }
+    bus.send({ type: 'sprout', sproutId: row.id });
+    return c.json(listUploads(db, row.id));
+  });
+
+  app.post('/sprouts/:id/uploads/clear-unused', c => {
+    const row = sproutOr404(c.req.param('id'));
+    clearUnused(db, row.id);
+    bus.send({ type: 'sprout', sproutId: row.id });
+    return c.json(listUploads(db, row.id));
+  });
+
+  /** Files to plant with: given between the first answer and planting. */
+  app.post('/sprouts/:id/uploads', async c => {
+    const row = sproutOr404(c.req.param('id'));
+    if (row.status !== 'seeding') throw new HttpError(409, 'Give files to a planted sprout along with something you tell it.');
+    const { files } = await readWhisper(c);
+    try { await saveUploads(db, row.id, files, null); } catch (err) { throw new HttpError(400, (err as Error).message); }
+    return c.json({ ok: true });
   });
 
   app.post('/sprouts/:id/buds/:budId', async c => {

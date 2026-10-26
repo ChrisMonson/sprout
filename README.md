@@ -48,6 +48,10 @@ For development, `npm run desktop:dev` runs the app unpackaged, as **Sprout Dev*
 
 `npm run desktop` builds once and runs it the way the packaged app does. `npx electron dist/desktop/selftest.mjs` runs the gate's pass/fail scenarios inside Electron.
 
+### Giving a sprout files
+
+Attach files to anything you tell a sprout (the paperclip in the whisper bar, or drop them on the page), or when you first describe it. Art, sounds, fonts, data or a picture to work from all work. They're kept in the sprout's `uploads` folder, outside its code, which its agent can read but not change. The agent copies what the tool actually uses into `public/assets`, so those are saved in its history, exported and built into phone apps; a reference picture stays where it is. Up to 25 MB a file and 300 MB a sprout (`server/uploads.ts`).
+
 ### Greenhouse Settings
 
 The cog on the home page opens Settings:

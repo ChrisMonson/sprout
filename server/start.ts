@@ -20,6 +20,7 @@ import { bus } from './bus.ts';
 import { listModels } from './agent/models.ts';
 import { claudeEnabled, getSettings } from './settings.ts';
 import { platform } from './platform.ts';
+import { forgetAbandonedSeeds } from './remove.ts';
 
 export interface GreenhouseOptions {
   port: number;
@@ -50,6 +51,7 @@ export async function startGreenhouse(options: GreenhouseOptions): Promise<Green
   db.prepare("UPDATE turns SET status = 'interrupted', ended_at = ? WHERE status = 'running'").run(Date.now());
   db.prepare("UPDATE whispers SET status = 'new' WHERE status = 'taken'").run();
   db.prepare("UPDATE sprouts SET status = 'failed' WHERE status = 'planting'").run();
+  forgetAbandonedSeeds(db);
 
   useSignIn(getSettings(db).claude.signIn);
   let credentials: CredentialStatus | null = null;

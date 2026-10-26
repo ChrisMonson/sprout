@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, timeOf, useStream, type AppState, type Bud, type SproutDetail, type Target } from './api.ts';
-import { Bud as BudIcon, Check, ChevronLeft, Close, Cog, Expand, Grow, History, Leaf, Send, Shrink, Target as TargetIcon } from './icons.tsx';
+import { Bud as BudIcon, Check, ChevronLeft, Clip, Close, Cog, Expand, Grow, History, Leaf, Send, Shrink, Target as TargetIcon } from './icons.tsx';
 import { go } from './App.tsx';
 import { UsageMeter } from './Usage.tsx';
+import { DropZone, FileChips, postFiles, useFiles } from './files.tsx';
 
 interface Toast { text: string; undoGrowthId?: number }
 
@@ -217,9 +218,11 @@ function ToolFrame({ id, url, name, growing, full, whisper, onSent }: { id: stri
   const [pointing, setPointing] = useState(false);
   const [target, setTarget] = useState<Target | null>(null);
   const [text, setText] = useState('');
+  const attached = useFiles();
+  const picker = useRef<HTMLInputElement>(null);
   // In full screen the whisper bar folds into a small button until it's needed.
   const [open, setOpen] = useState(false);
-  const folded = full && !open && !pointing && !target && !text;
+  const folded = full && !open && !pointing && !target && !text && !attached.files.length;
   const input = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -245,18 +248,24 @@ function ToolFrame({ id, url, name, growing, full, whisper, onSent }: { id: stri
 
   const send = async () => {
     const t = text.trim();
-    if (!t) return;
+    const files = attached.files;
+    if (!t && !files.length) return;
     setText('');
+    attached.clear();
     const sentTarget = target;
     setTarget(null);
     setOpen(false);
     try {
-      const res = await api.post<{ claude?: boolean }>(`/sprouts/${id}/whisper`, { text: t, target: sentTarget });
-      onSent(res.claude === false ? 'Saved. Claude is off, so Sprout will look at this when it’s turned back on.'
-        : growing ? 'Heard. Sprout will work on it, and change things when you pause.' : 'Heard. Growth is resting, so Sprout will change only what you asked.');
+      const res = files.length
+        ? await postFiles<{ claude?: boolean }>(`/sprouts/${id}/whisper`, { text: t, target: sentTarget ? JSON.stringify(sentTarget) : '' }, files)
+        : await api.post<{ claude?: boolean }>(`/sprouts/${id}/whisper`, { text: t, target: sentTarget });
+      const withFiles = files.length ? ` (with ${files.length === 1 ? 'your file' : `${files.length} files`})` : '';
+      onSent(res.claude === false ? `Saved${withFiles}. Claude is off, so Sprout will look at this when it’s turned back on.`
+        : growing ? `Heard${withFiles}. Sprout will work on it, and change things when you pause.` : `Heard${withFiles}. Growth is resting, so Sprout will change only what you asked.`);
     } catch (err) {
       onSent((err as Error).message);
       setText(t);
+      attached.add(files);
     }
   };
 
@@ -271,6 +280,7 @@ function ToolFrame({ id, url, name, growing, full, whisper, onSent }: { id: stri
           ? <iframe ref={frame} className="frame" src={url} title={name || 'Your tool'} />
           : <div className="frame placeholder" aria-label={`Opening ${name || 'your tool'}`} />}
       </div>
+      {whisper && <DropZone label={`Drop files to give ${name || 'your tool'}`} onFiles={list => { attached.add(list); setOpen(true); setTimeout(() => input.current?.focus(), 0); }}>{null}</DropZone>}
       {!whisper ? null : folded ? (
         <button className="whisper-fab" onClick={() => { setOpen(true); setTimeout(() => input.current?.focus(), 0); }} aria-label="Tell Sprout something" title="Tell Sprout something"><Leaf size={22} /></button>
       ) : (
@@ -279,6 +289,8 @@ function ToolFrame({ id, url, name, growing, full, whisper, onSent }: { id: stri
           {pointing && (
             <div className="hint"><span>Click any part of {name || 'your tool'} to talk about it.</span><button className="ghost-dark" onClick={togglePoint}>Cancel</button></div>
           )}
+          <FileChips files={attached.files} onRemove={attached.remove} dark />
+          {attached.problem && <span className="hint"><span>{attached.problem}</span></span>}
           {target && (
             <span className="about">About: {about.length > 40 ? `${about.slice(0, 40)}…` : about}
               <button aria-label="Clear" onClick={() => setTarget(null)}><Close size={12} /></button>
@@ -287,9 +299,12 @@ function ToolFrame({ id, url, name, growing, full, whisper, onSent }: { id: stri
           <div className="row">
             <button className="icon-btn" aria-pressed={pointing} aria-label="Point at something" title="Point at something" onClick={togglePoint}
               style={{ background: pointing ? 'var(--gh-green)' : 'var(--gh-dark-2)', color: '#fff' }}><TargetIcon /></button>
+            <button className="icon-btn" aria-label="Attach files" title="Attach files (or drop them on the page)" onClick={() => picker.current?.click()}
+              style={{ background: 'var(--gh-dark-2)', color: '#fff' }}><Clip /></button>
+            <input ref={picker} type="file" multiple hidden onChange={e => { attached.add(e.target.files); e.target.value = ''; input.current?.focus(); }} />
             <label htmlFor="whisper" className="sr">Tell Sprout something</label>
             <input id="whisper" ref={input} value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void send(); }}
-              placeholder={target ? 'What should change here?' : `Tell Sprout anything about ${name || 'your tool'}…`} />
+              placeholder={attached.files.length ? 'What should Sprout do with these?' : target ? 'What should change here?' : `Tell Sprout anything about ${name || 'your tool'}…`} />
             <button className="icon-btn" aria-label="Send to Sprout" style={{ background: 'var(--gh-green)', color: '#fff' }} onClick={send}><Send /></button>
             {full && <button className="icon-btn" aria-label="Hide" title="Hide" style={{ background: 'transparent', color: 'var(--gh-on-dark-muted)' }} onClick={() => { setOpen(false); setTarget(null); if (pointing) togglePoint(); }}><Close size={16} /></button>}
           </div>
@@ -388,6 +403,7 @@ function HistoryDrawer({ detail, onClose, onRewind, onCancelNotification }: {
           <div key={w.id} className="note">
             <span className="w muted" style={{ fontSize: 13 }}>{w.target ? `About ${w.target.text || w.target.sproutId || w.target.tag}` : 'In general'} · {timeOf(w.ts)}</span>
             <span className="q">“{w.text}”</span>
+            {!!w.files?.length && <span className="muted" style={{ fontSize: 13 }}>With {w.files.map(f => f.name).join(', ')}</span>}
             <span className="s">{whisperStatus[w.status] ?? w.status}</span>
           </div>
         ))}
@@ -556,6 +572,10 @@ function SettingsDrawer({ id, name, seed, onSaved, onClose }: { id: string; name
         <IconEditor id={id} />
       </section>
       <section>
+        <h3>Files</h3>
+        <FilesManager id={id} name={name} />
+      </section>
+      <section>
         <h3>Export</h3>
         <p className="muted" style={{ margin: 0, fontSize: 14, lineHeight: 1.5 }}>Save {name || 'this sprout'} as a .sprout file: its code and history, what Sprout has learned, and optionally your data. Import it from the home page, here or on another Mac.</p>
         <ExportSprout id={id} />
@@ -570,6 +590,59 @@ function SettingsDrawer({ id, name, seed, onSaved, onClose }: { id: string; name
         <RemoveSprout id={id} name={name} />
       </section>
     </aside>
+  );
+}
+
+interface Uploads { files: { id: number; name: string; size: number; ts: number; type: string; used: boolean }[]; bytes: number; limit: number }
+
+const sizeOf = (bytes: number) => bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+
+/**
+ * Files the person gave this sprout. Deleting one never changes the tool: what
+ * it uses was copied into its code. Clearing unused files also clears
+ * reference pictures, so it asks first.
+ */
+function FilesManager({ id, name }: { id: string; name: string }) {
+  const [list, setList] = useState<Uploads | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState('');
+  const load = useCallback(() => { api.get<Uploads>(`/sprouts/${id}/uploads`).then(setList).catch(() => {}); }, [id]);
+  useEffect(load, [load]);
+  useStream(msg => { if (msg.type === 'sprout' && msg.sproutId === id) load(); });
+  const act = async (work: () => Promise<Uploads>) => {
+    setError('');
+    try { setList(await work()); } catch (err) { setError((err as Error).message); }
+  };
+  if (!list) return null;
+  if (!list.files.length) {
+    return <p className="muted" style={{ margin: 0, fontSize: 14, lineHeight: 1.5 }}>Files you give {name || 'this sprout'} (with the paperclip, or by dropping them on the page) show up here.</p>;
+  }
+  const unused = list.files.filter(f => !f.used).length;
+  return (
+    <div className="files-list">
+      <p className="muted" style={{ margin: 0, fontSize: 14, lineHeight: 1.5 }}>
+        {sizeOf(list.bytes)} of {sizeOf(list.limit)}. Deleting a file never changes {name || 'the tool'}: anything it uses is already part of it.
+      </p>
+      {list.files.map(f => (
+        <div key={f.id} className="file-row">
+          <span className="n" title={f.name}>{f.name}</span>
+          <span className="m">{sizeOf(f.size)} · {new Date(f.ts).toLocaleDateString([], { month: 'short', day: 'numeric' })}{f.used ? ' · In use' : ''}</span>
+          <button className="icon-btn" aria-label={`Delete ${f.name}`} title="Delete" onClick={() => act(() => api.delete<Uploads>(`/sprouts/${id}/uploads/${f.id}`))}><Close size={12} /></button>
+        </div>
+      ))}
+      {unused > 0 && (confirming ? (
+        <div className="confirm" role="group" aria-label="Confirm clearing files">
+          <p style={{ margin: 0, fontSize: 14, lineHeight: 1.45 }}>Delete the {unused} file{unused === 1 ? '' : 's'} not in use? That includes any picture you gave as a reference.</p>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button className="btn small danger" onClick={() => { setConfirming(false); void act(() => api.post<Uploads>(`/sprouts/${id}/uploads/clear-unused`)); }}>Delete</button>
+            <button className="btn quiet small" onClick={() => setConfirming(false)}>Cancel</button>
+          </div>
+        </div>
+      ) : (
+        <button className="btn quiet small" style={{ alignSelf: 'flex-start' }} onClick={() => setConfirming(true)}>Clear unused files…</button>
+      ))}
+      {error && <p className="error small" role="alert" style={{ margin: 0 }}>{error}</p>}
+    </div>
   );
 }
 

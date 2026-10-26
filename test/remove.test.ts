@@ -17,6 +17,9 @@ describe('removing sprouts', () => {
     mkdirSync(sproutPaths(id).live, { recursive: true });
     writeFileSync(join(sproutPaths(id).live, 'App.tsx'), 'x');
     db.prepare("INSERT INTO whispers (sprout_id, ts, text) VALUES (?, 0, 'hi')").run(id);
+    mkdirSync(sproutPaths(id).uploads, { recursive: true });
+    writeFileSync(join(sproutPaths(id).uploads, 'art.png'), 'x');
+    db.prepare("INSERT INTO uploads (sprout_id, whisper_id, ts, name, file, size, type) VALUES (?, 1, 0, 'art.png', 'art.png', 1, 'image/png')").run(id);
     schedule(db, id, { title: 'Later', at: Date.now() + 60_000 });
   });
 
@@ -46,6 +49,7 @@ describe('removing sprouts', () => {
     deleteForever(db, id);
     expect(q.sprout(db, id)).toBeUndefined();
     expect((db.prepare('SELECT COUNT(*) AS n FROM whispers WHERE sprout_id = ?').get(id) as { n: number }).n).toBe(0);
+    expect((db.prepare('SELECT COUNT(*) AS n FROM uploads WHERE sprout_id = ?').get(id) as { n: number }).n).toBe(0);
     expect(existsSync(join(process.env.SPROUT_HOME!, 'removed', id))).toBe(false);
   });
 });

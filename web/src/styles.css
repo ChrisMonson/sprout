@@ -221,6 +221,23 @@ h1 { margin: 0; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; }
 .whisper .row { display: flex; align-items: center; gap: 6px; }
 .whisper .hint { display: flex; align-items: center; gap: 10px; padding: 6px 8px 2px; font-size: 14px; color: var(--gh-on-dark-soft); }
 .whisper .hint span { flex: 1; }
+.file-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.whisper .file-chips { margin: 4px 6px 0; }
+.file-chip { display: inline-flex; align-items: center; gap: 6px; max-width: 240px; border-radius: 999px; padding: 4px 4px 4px 12px; font-size: 13px; background: var(--gh-hover); color: var(--gh-ink); }
+.file-chips.dark .file-chip { background: var(--gh-dark-2); color: #fff; }
+.file-chip .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-chip .z { opacity: 0.65; font-variant-numeric: tabular-nums; flex: none; }
+.file-chip button { border: 0; width: 22px; height: 22px; border-radius: 50%; background: rgba(127, 127, 127, 0.2); color: inherit; display: flex; align-items: center; justify-content: center; padding: 0; flex: none; cursor: pointer; }
+.composer .icon-btn.attach { background: transparent; color: var(--gh-muted); flex: none; }
+.composer .icon-btn.attach:hover { color: var(--gh-ink); }
+.files-list { display: flex; flex-direction: column; gap: 8px; }
+.file-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto; column-gap: 8px; align-items: center; padding: 8px 10px; border-radius: 10px; background: var(--gh-hover); }
+.file-row .n { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-row .m { grid-row: 2; font-size: 12px; color: var(--gh-muted); }
+.file-row .icon-btn { grid-row: 1 / span 2; grid-column: 2; width: 30px; height: 30px; background: transparent; color: var(--gh-muted); }
+.file-row .icon-btn:hover { color: var(--gh-ink); }
+.drop-zone { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: color-mix(in srgb, var(--gh-bg) 70%, transparent); border: 3px dashed var(--gh-green); border-radius: 18px; }
+.drop-zone span { background: var(--gh-surface); color: var(--gh-ink); padding: 14px 20px; border-radius: 14px; font-weight: 600; box-shadow: 0 8px 24px rgba(24, 32, 27, 0.15); pointer-events: none; }
 .whisper .about { display: inline-flex; align-items: center; gap: 6px; background: var(--gh-green); border-radius: 999px; padding: 4px 4px 4px 12px; font-size: 13px; margin: 4px 6px 0; align-self: flex-start; max-width: 100%; }
 .whisper .about button { border: 0; width: 24px; height: 24px; border-radius: 50%; background: rgba(255, 255, 255, 0.15); color: #fff; display: flex; align-items: center; justify-content: center; padding: 0; flex: none; }
 .ghost-dark { border: 1px solid var(--gh-on-dark-line); border-radius: 8px; padding: 4px 10px; background: transparent; color: #fff; font-size: 13px; }

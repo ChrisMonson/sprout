@@ -50,5 +50,7 @@ export function sproutPaths(id: string) {
     /** One the person chose, used instead of the drawn one. */
     iconCustom: join(base, 'icon-custom.svg'),
     iconCache: join(base, 'icon-cache'),
+    /** Files the person gave it; the agent may read them and copy what the tool uses into public/assets. */
+    uploads: join(base, 'uploads'),
   };
 }

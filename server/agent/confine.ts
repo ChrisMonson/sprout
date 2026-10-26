@@ -40,8 +40,9 @@ export function inside(root: string, target: string): boolean {
 /**
  * @param root     the folder the agent works in
  * @param liveRoot the live copy; migrations that exist there are frozen
+ * @param readOnly folders it may look in but never change (files the person gave it)
  */
-export function checkToolUse(tool: string, input: Record<string, unknown>, root: string, liveRoot?: string): Verdict {
+export function checkToolUse(tool: string, input: Record<string, unknown>, root: string, liveRoot?: string, readOnly: string[] = []): Verdict {
   const params = PATH_PARAMS[tool];
   if (!params) return { ok: true };
   for (const param of params) {
@@ -50,6 +51,10 @@ export function checkToolUse(tool: string, input: Record<string, unknown>, root:
     // A glob pattern is only a path when it is absolute or climbs out.
     if (param === 'pattern' && !isAbsolute(value) && !value.split(/[\\/]/).includes('..')) continue;
     const target = resolve(root, value);
+    if (!WRITE_TOOLS.has(tool) && readOnly.some(dir => inside(dir, target))) continue;
+    if (WRITE_TOOLS.has(tool) && readOnly.some(dir => inside(dir, target))) {
+      return { ok: false, reason: 'Files the person gave you can be read but not changed. Copy one into public/assets to use it.' };
+    }
     if (!inside(root, target)) {
       return { ok: false, reason: `${value} is outside this sprout. Only files in ${root} can be used.` };
     }
