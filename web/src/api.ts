@@ -17,7 +17,7 @@ export interface NextQuestion { done: boolean; question: string; suggestions: st
 export interface Target { sproutId: string | null; path: string; tag: string; text: string; rect?: unknown }
 export interface Growth { id: number; ts: number; kind: string; title: string; detail: string | null; rewindable: number }
 export interface Bud { id: number; ts: number; kind: 'bud' | 'question'; text: string; why: string | null; suggestions: string[] | null }
-export interface Whisper { id: number; ts: number; text: string; target: Target | null; status: string }
+export interface Whisper { id: number; ts: number; text: string; target: Target | null; status: string; files?: { name: string; size: number }[] }
 export interface SproutDetail {
   sprout: { id: string; name: string; seed: string; status: string; growing: boolean; busy: boolean; pending: boolean; feel: { preset: string; note?: string } | null };
   growth: Growth[];
@@ -57,15 +57,33 @@ export const api = {
   delete: <T>(path: string) => call<T>('DELETE', path),
 };
 
+// One connection to the greenhouse's live messages, shared by every listener.
+// A connection each would soon use up the browser's six per server, and then
+// ordinary requests (a click's fetch) would wait for one to close.
+const listeners = new Set<(msg: BusMessage) => void>();
+let source: EventSource | null = null;
+
+function listen(fn: (msg: BusMessage) => void) {
+  listeners.add(fn);
+  if (!source) {
+    source = new EventSource('/api/stream');
+    source.onmessage = e => {
+      let msg: BusMessage;
+      try { msg = JSON.parse(e.data); } catch { return; }
+      for (const l of listeners) l(msg);
+    };
+  }
+  return () => {
+    listeners.delete(fn);
+    if (!listeners.size) { source?.close(); source = null; }
+  };
+}
+
 /** Live messages from the greenhouse. */
 export function useStream(onMessage: (msg: BusMessage) => void) {
   const handler = useRef(onMessage);
   handler.current = onMessage;
-  useEffect(() => {
-    const source = new EventSource('/api/stream');
-    source.onmessage = e => { try { handler.current(JSON.parse(e.data)); } catch { /* ignore */ } };
-    return () => source.close();
-  }, []);
+  useEffect(() => listen(msg => handler.current(msg)), []);
 }
 
 export function timeOf(ts: number) {
