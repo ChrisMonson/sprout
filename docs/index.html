@@ -381,6 +381,45 @@ npm run package    <span class="c"># release/Sprout.app</span></code></pre>
       range.addEventListener('input', () => view.style.setProperty('--at', `${range.value}%`));
     }
   </script>
+  <script>
+    // Any screenshot opens full screen: tap or click it (or Enter on it), and tap anywhere, Escape or × to close.
+    (() => {
+      const viewer = document.createElement('dialog');
+      viewer.className = 'viewer';
+      viewer.innerHTML = '<button class="viewer-close" type="button" aria-label="Close">×</button><img alt="" />';
+      document.body.append(viewer);
+      const big = viewer.querySelector('img');
+      const shots = 'main picture img';
+      // Screenshots can be reached with the keyboard, including the explorer's as it swaps them in.
+      const mark = () => {
+        for (const img of document.querySelectorAll(shots)) {
+          if (img.tabIndex === 0) continue;
+          img.tabIndex = 0;
+          img.setAttribute('role', 'button');
+          img.setAttribute('aria-label', `View full screen: ${img.alt}`);
+        }
+      };
+      mark();
+      new MutationObserver(mark).observe(document.querySelector('main'), { childList: true, subtree: true });
+      const open = img => {
+        big.src = img.currentSrc || img.src;     // the light or dark version that's showing
+        big.alt = img.alt;
+        // On a phone held upright, a wide shot fills the screen's height and pans sideways
+        // instead of shrinking to its width.
+        viewer.classList.toggle('pan', innerWidth < innerHeight && img.naturalWidth > img.naturalHeight * 1.1);
+        document.documentElement.classList.add('viewing');
+        viewer.showModal();
+        viewer.scrollLeft = (viewer.scrollWidth - viewer.clientWidth) / 2;
+      };
+      document.addEventListener('click', e => { const img = e.target.closest(shots); if (img) open(img); });
+      document.addEventListener('keydown', e => {
+        const img = e.target.closest?.(shots);
+        if (img && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); open(img); }
+      });
+      viewer.addEventListener('click', () => viewer.close());
+      viewer.addEventListener('close', () => document.documentElement.classList.remove('viewing'));
+    })();
+  </script>
   <script src="vines.js" defer></script>
 </body>
 </html>
