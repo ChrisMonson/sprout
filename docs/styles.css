@@ -199,6 +199,10 @@ main .wrap, .foot .wrap { position: relative; z-index: 2; }
 
 /* Before and after: today's version underneath, the planted one on top, cut off at --at. */
 .growth { padding-top: 0; }
+/* A vine hangs above each section after the hero: give it room to breathe. */
+main > section:not(.hero) { padding-top: calc(clamp(72px, 10vw, 128px) + clamp(24px, 4vw, 56px)); }
+main > section.idea { padding-top: calc(clamp(48px, 7vw, 88px) + clamp(24px, 4vw, 56px)); }
+main > section.growth { padding-top: 0; }
 .growth-head { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: clamp(24px, 5vw, 64px); align-items: end; margin-bottom: 40px; }
 .growth-head p { color: var(--muted); margin: 0; }
 .compare { margin: 0; padding: 12px; border-radius: 30px; background: var(--pulp), var(--tray); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), var(--shadow); }
