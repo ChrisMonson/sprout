@@ -150,6 +150,8 @@ main .wrap, .foot .wrap { position: relative; z-index: 2; }
 .idea { padding: clamp(48px, 7vw, 88px) 0; }
 .idea .big { font: 500 clamp(24px, 3.2vw, 36px)/1.35 var(--display); letter-spacing: -0.015em; text-align: center; }
 .idea .big em { color: var(--green-text); }
+.idea .eyebrow { text-align: center; }
+.idea .more { max-width: 52ch; margin: 24px auto 0; text-align: center; color: var(--muted); font-size: 18px; }
 
 /* Steps */
 .steps h2 { margin-bottom: clamp(40px, 6vw, 72px); }
