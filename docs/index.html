@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sprout: grow the tools you wish you had</title>
+  <meta name="description" content="Describe a small tool in your own words. Sprout plants it, then keeps it growing from how you use it and what you tell it." />
+  <meta property="og:title" content="Sprout: grow the tools you wish you had" />
+  <meta property="og:description" content="Describe a small tool in your own words. Sprout plants it, then keeps it growing from how you use it and what you tell it." />
+  <meta property="og:image" content="images/home-light.jpg" />
+  <meta name="theme-color" content="#F7F8F6" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#121513" media="(prefers-color-scheme: dark)" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=Fraunces:ital,opsz,wght@1,9..144,500&display=swap" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="#top" aria-label="Sprout, back to top">
+        <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M12 21v-9" /><path d="M12 12c0-4 3-7 8-7 0 4-3 7-8 7z" /><path d="M12 14c0-3-2.5-5.5-7-5.5 0 3 2.5 5.5 7 5.5z" /></svg>
+        Sprout
+      </a>
+      <nav aria-label="Page">
+        <a href="#how">How it grows</a>
+        <a href="#grown">What’s grown</a>
+        <a href="#features">More</a>
+        <a href="#under-the-hood">Under the hood</a>
+        <a class="pill" href="https://github.com/ChrisMonson/sprout">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <!-- Hero -->
+    <section class="hero">
+      <div class="wrap hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow">An experiment in tools that grow</p>
+          <h1>Grow the tools you wish you had.</h1>
+          <p class="lede">Describe something small in your own words: a tracker, a reference, a game. Sprout plants a working first version, then keeps it growing from how you use it and what you tell it. No code, no templates, no app store.</p>
+          <div class="cta">
+            <a class="btn" href="#how">See how it grows</a>
+            <a class="btn quiet" href="https://github.com/ChrisMonson/sprout">View on GitHub</a>
+          </div>
+          <p class="fine">For macOS. Runs on your own Mac, with your own Anthropic API key.</p>
+        </div>
+        <figure class="hero-shot tray-frame">
+          <picture><source srcset="images/home-dark.jpg" media="(prefers-color-scheme: dark)" /><img src="images/home-light.jpg" width="1800" height="1398" alt="The Sprout greenhouse: a seed tray of tools, each with its own drawn icon: Launch Watch, Hex Harbor Fishing, Disaster Watch, Skyrim Lore Journal, Lighting Console, Overhead and Song Scout." /></picture>
+        </figure>
+      </div>
+    </section>
+
+    <!-- The idea -->
+    <section class="idea">
+      <div class="wrap narrow">
+        <p class="big">Most software is built for everyone, so it fits no one quite right. Sprout tries the opposite: a tool for exactly one person, that <em>keeps adapting</em> to them, built and tended by an AI agent that only changes it when there’s a reason to.</p>
+      </div>
+    </section>
+
+    <!-- How it grows -->
+    <section id="how" class="steps">
+      <div class="wrap">
+        <p class="eyebrow">How it grows</p>
+        <h2>From a sentence to a tool that keeps up with you.</h2>
+
+        <article class="step">
+          <div class="step-copy">
+            <span class="num">1</span>
+            <h3>Say what you want to grow</h3>
+            <p>One sentence is enough. Sprout asks a couple of friendly follow-up questions (never about technology), then how it should <em>feel</em>: calm, professional, organic or quirky, in your own words if you like. You can add files too: art for a game, a spreadsheet of data, a picture of what you have in mind.</p>
+          </div>
+          <div class="step-media">
+            <picture><source srcset="images/grow-dark.jpg" media="(prefers-color-scheme: dark)" /><img src="images/grow-light.jpg" width="1600" height="1130" loading="lazy" alt="“What do you want to grow?” with a box reading “A tide chart that tells me when to go tide-pooling” and a Plant button." /></picture>
+            <div class="chat" aria-label="An example of Sprout’s questions">
+              <p class="bubble sprout">Which beach should it follow, and how far ahead do you plan?</p>
+              <p class="bubble you">Just one beach. A few days ahead is plenty.</p>
+              <div class="chips"><span>Calm</span><span>Professional</span><span class="on">Organic</span><span>Quirky</span></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="step flip">
+          <div class="step-copy">
+            <span class="num">2</span>
+            <h3>It plants a real, working first version</h3>
+            <p>An agent builds a small web app with its own database, in a folder of its own. Before you see it, the greenhouse checks that it builds and opens without errors. Then it takes root in your tray, next to everything else you’ve grown, each with an icon drawn to suit it.</p>
+          </div>
+          <div class="step-media">
+            <picture><source srcset="images/game-dark.jpg" media="(prefers-color-scheme: dark)" /><img src="images/game-light.jpg" width="1800" height="1125" loading="lazy" alt="Hex Harbor Fishing, a hex-map fishing game grown in Sprout, at night in Port Haven, with Fishing, Hold, Market, Harbor, Talents and Captain’s log buttons." /></picture>
+          </div>
+        </article>
+
+        <article class="step">
+          <div class="step-copy">
+            <span class="num">3</span>
+            <h3>Use it, point at things, say what you think</h3>
+            <p>Every tool has a whisper bar. Point at any part of it and say what should change, in plain words, or just mention what’s bugging you. Drop in a file if it helps. Sprout works on it in the background and swaps the change in at a quiet moment, so nothing moves while you’re in the middle of something.</p>
+          </div>
+          <div class="step-media">
+            <picture><source srcset="images/whisper-dark.jpg" media="(prefers-color-scheme: dark)" /><img src="images/whisper-light.jpg" width="1800" height="1125" loading="lazy" alt="Overhead, a radar of the planes around home (here, Denver International Airport) with a list of flights, and the whisper bar at the bottom reading “Show which airline each flight is with”." /></picture>
+          </div>
+        </article>
+
+        <article class="step flip">
+          <div class="step-copy">
+            <span class="num">4</span>
+            <h3>It keeps growing, and you stay in charge</h3>
+            <p>Sprout also watches how a tool is actually used (never what you type) and the errors it runs into. Ideas you didn’t ask for arrive as suggestions you can say yes or no to; questions wait for your answer. Every change lands in History in plain language, with <strong>Rewind</strong> one click away, next to the reminders it has coming up and what growing it has cost.</p>
+          </div>
+          <div class="step-media">
+            <picture><source srcset="images/history-dark.jpg" media="(prefers-color-scheme: dark)" /><img src="images/history-light.jpg" width="1800" height="1125" loading="lazy" alt="Launch Watch’s History drawer: what growing it has cost, and the launch reminders it has coming up, each of which can be cancelled, above the list of what grew, each with a Rewind button." /></picture>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- Evidence -->
+    <section class="evidence">
+      <div class="wrap">
+        <div class="evidence-grid">
+          <div>
+            <p class="eyebrow">Growth follows evidence</p>
+            <h2>Change only when there’s a reason.</h2>
+            <p>A tool that rewrites itself on a whim isn’t one you can rely on. Sprout grows a tool only because you asked for something, said yes to an idea, or the tool broke. Turn <strong>Growth</strong> off and it stops changing on its own, but still does what you ask.</p>
+          </div>
+          <ol class="gate">
+            <li><span>Your data is safe</span>Database changes may only add, never remove. Code can roll back; data never has to.</li>
+            <li><span>It has to work first</span>Every change is type-checked, built and opened in a real browser against a copy of your data before it’s saved.</li>
+            <li><span>It goes live quietly</span>Changes wait for a pause in what you’re doing, then slip in without a reload.</li>
+            <li><span>It watches its own back</span>If errors spike in the two minutes after a change, Sprout undoes it and tells the agent why.</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <!-- Spotlight -->
+    <section class="spotlight">
+      <div class="wrap">
+        <div class="spotlight-head">
+          <div>
+            <p class="eyebrow">Not just toys</p>
+            <h2>A lighting desk, from one sentence.</h2>
+          </div>
+          <p>“I’d like to make a tool for controlling DMX lighting fixtures.” That’s all it started from. Lighting Console now lays out the rig on a stage plot, gives live control of colour, position and intensity, runs effects and sequences, and steps through a cue list with a big GO button, sending Art-Net to the real lights on the network. It grew there one request at a time, the way a tool you actually use should.</p>
+        </div>
+        <figure class="spotlight-shot">
+          <picture><source srcset="images/lighting-dark.jpg" media="(prefers-color-scheme: dark)" /><img src="images/lighting-light.jpg" width="1800" height="1125" loading="lazy" alt="Lighting Console filling the window: a stage plot of front pars and washes with four fixtures selected, live controls for colour swatches, a pan and tilt pad, intensity and beam, and a cue list with Warm Wash, Cool Wash, Cue 3 live, Cue 4 next and a GO button." /></picture>
+        </figure>
+      </div>
+    </section>
+
+    <!-- Meet the sprouts -->
+    <section id="grown" class="grown">
+      <div class="wrap">
+        <p class="eyebrow">What’s grown so far</p>
+        <h2>Meet the sprouts.</h2>
+        <p class="section-lede">Every icon here was drawn by Sprout to suit its tool. Pick one to see what it started as, and how it has grown since.</p>
+        <div class="explorer">
+          <div class="ex-tabs" role="tablist" aria-label="Sprouts">
+            <button role="tab" id="ex-tab-launch" aria-controls="ex-panel" aria-selected="false" tabindex="-1" data-id="launch">
+              <img src="images/icons/launch.svg" width="56" height="56" alt="" /><span>Launch Watch</span>
+            </button>
+            <button role="tab" id="ex-tab-game" aria-controls="ex-panel" aria-selected="true" tabindex="0" data-id="game">
+              <img src="images/icons/game.svg" width="56" height="56" alt="" /><span>Hex Harbor Fishing</span>
+            </button>
+            <button role="tab" id="ex-tab-disaster" aria-controls="ex-panel" aria-selected="false" tabindex="-1" data-id="disaster">
+              <img src="images/icons/disaster.svg" width="56" height="56" alt="" /><span>Disaster Watch</span>
+            </button>
+            <button role="tab" id="ex-tab-skyrim" aria-controls="ex-panel" aria-selected="false" tabindex="-1" data-id="skyrim">
+              <img src="images/icons/skyrim.svg" width="56" height="56" alt="" /><span>Skyrim Lore Journal</span>
+            </button>
+            <button role="tab" id="ex-tab-lighting" aria-controls="ex-panel" aria-selected="false" tabindex="-1" data-id="lighting">
+              <img src="images/icons/lighting.svg" width="56" height="56" alt="" /><span>Lighting Console</span>
+            </button>
+            <button role="tab" id="ex-tab-overhead" aria-controls="ex-panel" aria-selected="false" tabindex="-1" data-id="overhead">
+              <img src="images/icons/overhead.svg" width="56" height="56" alt="" /><span>Overhead</span>
+            </button>
+            <button role="tab" id="ex-tab-song" aria-controls="ex-panel" aria-selected="false" tabindex="-1" data-id="song">
+              <img src="images/icons/song.svg" width="56" height="56" alt="" /><span>Song Scout</span>
+            </button>
+          </div>
+          <div class="ex-panel" id="ex-panel" role="tabpanel" aria-labelledby="ex-tab-game" tabindex="0">
+            <div class="ex-shot"><picture><source srcset="images/game-dark.jpg" media="(prefers-color-scheme: dark)" /><img src="images/game-light.jpg" width="1800" height="1125" loading="lazy" alt="Hex Harbor Fishing: a hex-map sailing and fishing game at night in Port Haven." /></picture></div>
+            <div class="ex-info">
+              <h3>Hex Harbor Fishing</h3>
+              <blockquote>“I’d like to make a hex grid based fishing game where you can sail from port, fish, and sell your catch. I’d like to be able to upgrade my fishing gear and boat with the money I earn.”</blockquote>
+              <p>A sailing and fishing game on a hex map. Fish the waters around Port Haven, sell your catch at market, and spend it on better gear and a better boat.</p>
+              <dl class="ex-stats"><div><dt>Planted</dt><dd>Oct 25</dd></div><div><dt>Changes since</dt><dd>70</dd></div></dl>
+              <p class="ex-recent-title">Latest growth</p>
+              <ul class="ex-recent"><li>Time passes twice as fast</li><li>Your course is drawn on the chart</li><li>Your boat turns to face its course</li></ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- More -->
+    <section id="features" class="features">
+      <div class="wrap">
+        <p class="eyebrow">And then some</p>
+        <h2>A greenhouse, not just a generator.</h2>
+        <div class="cards">
+          <article class="card span-2 phones-card">
+            <div class="card-copy">
+              <h3>Harvest to Android</h3>
+              <p>Turn any sprout into a real Android app and install it on your phone in a click. Its own code runs on the phone with its own data, reminders arrive as phone notifications, and checks keep running in the background while it’s closed.</p>
+            </div>
+            <div class="phones">
+              <picture><source srcset="images/phone-launch-dark.jpg" media="(prefers-color-scheme: dark)" /><img class="phone" src="images/phone-launch-light.jpg" width="700" height="1395" loading="lazy" alt="Launch Watch running as an Android app, counting down to the next launch." /></picture>
+              <picture><source srcset="images/phone-overhead-dark.jpg" media="(prefers-color-scheme: dark)" /><img class="phone" src="images/phone-overhead-light.jpg" width="700" height="1395" loading="lazy" alt="Overhead running as an Android app: a radar of planes around Denver International Airport." /></picture>
+              <picture><source srcset="images/phone-disaster-dark.jpg" media="(prefers-color-scheme: dark)" /><img class="phone" src="images/phone-disaster-light.jpg" width="700" height="1395" loading="lazy" alt="Disaster Watch running as an Android app, with its map of recent earthquakes." /></picture>
+            </div>
+          </article>
+          <article class="card">
+            <h3>Give it files</h3>
+            <p>Drop sprites, sounds, fonts, a spreadsheet or a reference picture on a sprout and say what to do with them. What the tool uses becomes part of it; the rest stays in a Files list you can tidy.</p>
+          </article>
+          <article class="card span-2 shot-card">
+            <picture><source srcset="images/settings-dark.jpg" media="(prefers-color-scheme: dark)" /><img src="images/settings-light.jpg" width="1800" height="1125" loading="lazy" alt="Disaster Watch’s Settings: name and description, its icon, files, export and harvest." /></picture>
+            <div class="card-copy">
+              <h3>Everything about a sprout, in one place</h3>
+              <p>Rename it, change its icon, manage its files, export it as a single <code>.sprout</code> file (code, full history and optionally your data) to bring into another Mac, harvest it, or remove it.</p>
+            </div>
+          </article>
+          <article class="card">
+            <h3>Lives in your menu bar</h3>
+            <p>A Mac app that keeps your tools and reminders running after you close the window, with notifications that carry each tool’s own icon and open the right tool.</p>
+          </article>
+          <article class="card">
+            <h3>Knows its limits</h3>
+            <p>See your Claude usage right from any sprout, pick lighter or stronger models, and switch growing off entirely. Your tools keep working without Claude.</p>
+          </article>
+          <article class="card span-2">
+            <h3>Light and dark</h3>
+            <p>The greenhouse follows your system’s light or dark mode, or the one you choose. Each sprout keeps the look it was grown with.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- Under the hood -->
+    <section id="under-the-hood" class="hood">
+      <div class="wrap">
+        <p class="eyebrow">Under the hood</p>
+        <h2>For the curious and the technical.</h2>
+        <div class="hood-grid">
+          <div class="hood-copy">
+            <p>Sprout is a TypeScript “greenhouse” that runs on your Mac. Each sprout is a small Vite + React app with a Hono server and its own SQLite database, kept in a git repository with a live copy you see and a work copy its agent edits.</p>
+            <ul class="ticks">
+              <li>Agents run on Anthropic’s <a href="https://code.claude.com/docs/en/agent-sdk/overview">Claude Agent SDK</a>, one fresh session per turn, with memory kept in files.</li>
+              <li>Each agent is confined to its own sprout’s folder, with no network access from the shell, and never sees your own Claude settings.</li>
+              <li>The greenhouse itself is never edited by an agent. It owns the safety checks, scheduling, rollback and the observer.</li>
+              <li>Four kinds of turns: questions while you describe, planting, growing, and observing (which only takes notes and suggests).</li>
+            </ul>
+          </div>
+          <div class="term" aria-label="Running Sprout from a terminal">
+            <div class="term-bar"><i></i><i></i><i></i></div>
+<pre><code><span class="c"># the greenhouse, in your browser</span>
+npm install
+npm run dev        <span class="c"># http://localhost:4100</span>
+
+<span class="c"># or as a Mac app</span>
+npm run package    <span class="c"># release/Sprout.app</span></code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Run it -->
+    <section class="run">
+      <div class="wrap narrow">
+        <h2>Grow your own.</h2>
+        <p>Sprout runs on your Mac (macOS, Node 24, git). To grow sprouts it uses Claude through your own <a href="https://platform.claude.com/">Anthropic API key</a>, added in Sprout’s Settings and kept in your Mac’s keychain. Without one, your sprouts keep working; they just don’t grow.</p>
+        <p class="fine">If you already use Claude Code, Sprout can also run on your own Claude account for personal use. Anthropic doesn’t allow apps to offer Claude account sign-in to others, so please use an API key for anything beyond yourself (<a href="https://code.claude.com/docs/en/legal-and-compliance">details</a>).</p>
+        <div class="cta center">
+          <a class="btn" href="https://github.com/ChrisMonson/sprout#running-it">Get started on GitHub</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <div class="wrap foot-inner">
+      <span class="brand small">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 21v-9" /><path d="M12 12c0-4 3-7 8-7 0 4-3 7-8 7z" /><path d="M12 14c0-3-2.5-5.5-7-5.5 0 3 2.5 5.5 7 5.5z" /></svg>
+        Sprout
+      </span>
+      <span>A personal project by Chris Monson. Built with Claude.</span>
+      <a href="https://github.com/ChrisMonson/sprout">github.com/ChrisMonson/sprout</a>
+    </div>
+  </footer>
+
+  <script id="sprouts" type="application/json">{"launch": {"id": "launch", "name": "Launch Watch", "img": "launch", "planted": "Oct 26", "changes": 5, "quote": "I want something that will show me upcoming rocket launches and give me notifications.", "about": "A countdown to the next launch, styled after a starship console, with a map of launch sites, live stream links and reminders before liftoff.", "recent": ["Orbital inclination", "Live stream links", "Rocket pictures for each launch"], "alt": "Launch Watch: a starship-console style countdown to the next rocket launch, with launch details and tomorrow’s launches."}, "game": {"id": "game", "name": "Hex Harbor Fishing", "img": "game", "planted": "Oct 25", "changes": 70, "quote": "I’d like to make a hex grid based fishing game where you can sail from port, fish, and sell your catch. I’d like to be able to upgrade my fishing gear and boat with the money I earn.", "about": "A sailing and fishing game on a hex map. Fish the waters around Port Haven, sell your catch at market, and spend it on better gear and a better boat.", "recent": ["Time passes twice as fast", "Your course is drawn on the chart", "Your boat turns to face its course"], "alt": "Hex Harbor Fishing: a hex-map sailing and fishing game at night in Port Haven."}, "disaster": {"id": "disaster", "name": "Disaster Watch", "img": "disaster", "planted": "Oct 24", "changes": 27, "quote": "I want to be able to see every natural disaster location in real time with alerts.", "about": "Earthquakes, storms and more on a live world map with the planet’s fault lines, sorted worst first, with alerts for the places you care about.", "recent": ["“Did you feel it?” reports to USGS", "Worst first within each disaster type", "List items fly the map there"], "alt": "Disaster Watch: a world map of recent earthquakes and storms with fault lines, and a list of events by magnitude."}, "skyrim": {"id": "skyrim", "name": "Skyrim Lore Journal", "img": "skyrim", "planted": "Oct 24", "changes": 23, "quote": "Can I have a tool that gives me interesting information on various Skyrim places and people?", "about": "A traveller’s journal of Skyrim’s holds, ruins, folk and quests, with a bestiary, an alchemist’s book of potions, bookmarks and a search.", "recent": ["Every strength of each potion", "Bookmarks for your pages", "The Alchemist’s Book"], "alt": "Skyrim Lore Journal, styled as an old leather-bound book: the Journal, the Bestiary and the Alchemist’s Book."}, "lighting": {"id": "lighting", "name": "Lighting Console", "img": "lighting", "planted": "Oct 24", "changes": 33, "quote": "I’d like to make a tool for controlling DMX lighting fixtures.", "about": "A lighting desk: a stage plot of the rig, live colour, position and intensity, effects, sequences and a cue list, sending Art-Net to real fixtures.", "recent": ["Click empty stage to deselect", "Live controls and Effects tabs", "Stage opens on Fixtures"], "alt": "Lighting Console: a stage plot with four fixtures selected, live controls and a cue list with a GO button."}, "overhead": {"id": "overhead", "name": "Overhead", "img": "whisper", "planted": "Oct 23", "changes": 14, "quote": "I’d like a tracker that shows airplanes that are currently flying over my house.", "about": "A radar of the planes over home: who they are, what they fly, how high, and a live feed from the nearest control towers. (Shown here around Denver International.)", "recent": ["Bigger radar, quieter zoom", "Tower links under Overhead Now", "Tower audio keeps playing"], "alt": "Overhead: a radar of planes around Denver International Airport with a list of flights."}, "song": {"id": "song", "name": "Song Scout", "img": "song", "planted": "Oct 23", "changes": 6, "quote": "I’d like a tool to help me learn new songs on the guitar.", "about": "Suggests songs at your level, says what each one teaches, links to chords, lessons and recordings, and keeps your tabs with the songs you’re learning.", "recent": ["Play the song next to your tab", "Listen to each song", "Keep your tabs with your songs"], "alt": "Song Scout: a suggested song at your level, with its chords, what it teaches and links to chords, lessons and recordings."}}</script>
+  <script>
+    // Meet the sprouts: picking an icon shows that sprout. Arrow keys move between them.
+    (() => {
+      const data = JSON.parse(document.getElementById('sprouts').textContent);
+      const tabs = [...document.querySelectorAll('.ex-tabs [role="tab"]')];
+      const panel = document.getElementById('ex-panel');
+      const esc = t => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+      // Load every screenshot up front so switching is instant.
+      for (const x of Object.values(data)) for (const mode of ['light', 'dark']) new Image().src = `images/${x.img}-${mode}.jpg`;
+      function show(tab, focus) {
+        const x = data[tab.dataset.id];
+        for (const t of tabs) { const on = t === tab; t.setAttribute('aria-selected', on); t.tabIndex = on ? 0 : -1; }
+        panel.setAttribute('aria-labelledby', tab.id);
+        panel.innerHTML = `<div class="ex-shot"><picture><source srcset="images/${x.img}-dark.jpg" media="(prefers-color-scheme: dark)" /><img src="images/${x.img}-light.jpg" width="1800" height="1125" alt="${esc(x.alt)}" /></picture></div>
+          <div class="ex-info"><h3>${esc(x.name)}</h3><blockquote>“${esc(x.quote)}”</blockquote><p>${esc(x.about)}</p>
+          <dl class="ex-stats"><div><dt>Planted</dt><dd>${esc(x.planted)}</dd></div><div><dt>Changes since</dt><dd>${x.changes}</dd></div></dl>
+          <p class="ex-recent-title">Latest growth</p><ul class="ex-recent">${x.recent.map(r => `<li>${esc(r)}</li>`).join('')}</ul></div>`;
+        panel.classList.remove('swap'); void panel.offsetWidth; panel.classList.add('swap');
+        if (focus) tab.focus();
+      }
+      tabs.forEach((tab, i) => {
+        tab.addEventListener('click', () => show(tab));
+        tab.addEventListener('keydown', e => {
+          const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+          if (e.key === 'Home') { e.preventDefault(); show(tabs[0], true); }
+          else if (e.key === 'End') { e.preventDefault(); show(tabs.at(-1), true); }
+          else if (step) { e.preventDefault(); show(tabs[(i + step + tabs.length) % tabs.length], true); }
+        });
+      });
+    })();
+  </script>
+  <script src="vines.js" defer></script>
+</body>
+</html>

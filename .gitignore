@@ -4,3 +4,6 @@ build/
 release/
 *.log
 .DS_Store
+
+# Full-size screenshots for the project page (docs/); scripts/docs-images.py makes the JPEGs
+docs/images/raw/
