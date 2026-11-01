@@ -13,18 +13,22 @@ const ids = { game: 'smvojao2sc39d', disaster: 'smvmt98rs0160', song: 'smvlzhmbu
 // Overhead shows planes around its home: point it somewhere public (an airport) before shooting it.
 const which = process.argv.slice(2);
 const browser = await chromium.launch();
-async function page(scheme = 'light', w = 1440, h = 900) {
-  const ctx = await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 2, colorScheme: scheme });
+// Hex Harbor Fishing draws its sea in 3D, which headless Chromium renders without
+// the GPU, leaving bright bars down the picture; it's shot in real Chrome instead.
+let gpu;
+const withGpu = async () => gpu ??= await chromium.launch({ channel: 'chrome', headless: false });
+async function page(scheme = 'light', w = 1440, h = 900, from = browser) {
+  const ctx = await from.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 2, colorScheme: scheme });
   // The greenhouse remembers the last theme; start each shot in the one asked for.
   await ctx.addInitScript(s => { try { localStorage.setItem('sprout-theme', s); } catch {} }, scheme);
   return ctx.newPage();
 }
 const settle = p => p.waitForTimeout(3500);
-const open = async (scheme, path, wait = 6000) => { const p = await page(scheme); await p.goto(`${base}/#${path}`); await p.waitForTimeout(wait); return p; };
+const open = async (scheme, path, wait = 6000, from) => { const p = await page(scheme, 1440, 900, from); await p.goto(`${base}/#${path}`); await p.waitForTimeout(wait); return p; };
 // Every shot is taken twice, light and dark, as raw/<name>-<scheme>.png.
 const shots = {
   async home(s) { return open(s, '/', 3500); },
-  async game(s) { return open(s, `/s/${ids.game}`, 7000); },
+  async game(s) { return open(s, `/s/${ids.game}`, 7000, await withGpu()); },
   async disaster(s) { return open(s, `/s/${ids.disaster}`, 9000); },
   async lighting(s) {
     // With fixtures selected, the Colour, Position and Intensity panels fill in.
@@ -74,3 +78,4 @@ for (const name of which.length ? which : Object.keys(shots)) {
   console.log('shot', name);
 }
 await browser.close();
+await gpu?.close();

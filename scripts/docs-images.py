@@ -1,5 +1,6 @@
 # Crops and compresses the project page's screenshots: docs/images/raw/*.png
-# (from scripts/docs-screenshots.mjs and adb screencaps) into docs/images/*.jpg.
+# (from scripts/docs-screenshots.mjs, scripts/docs-growth.mjs and adb screencaps)
+# into docs/images/*.jpg.
 #   python3 scripts/docs-images.py
 from pathlib import Path
 from PIL import Image

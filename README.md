@@ -2,6 +2,8 @@
 
 Grow tools that build, maintain, and improve themselves.
 
+**[See what it does →](https://chrismonson.github.io/sprout/)** (a tour with screenshots of real sprouts)
+
 You describe a tool you wish you had ("What do you want to grow?"). Sprout asks a few follow-up questions and asks how it should feel. Then a Claude Code agent builds the first version. After that, the tool keeps getting better as you use it. The agent learns from the errors it sees, from how you use the tool, and from things you point at and say ("whispers").
 
 Drag sprouts in the home tray to reorder them (or focus one and press Option-← / →). **Export** any sprout from its Settings (the cog) as a single `.sprout` file (its code with full history, its agent's memory, and optionally your data), and **Import…** one from the home page. An imported sprout arrives resting, with Growth off.

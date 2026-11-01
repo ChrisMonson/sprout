@@ -197,6 +197,25 @@ main .wrap, .foot .wrap { position: relative; z-index: 2; }
 .spotlight-shot { margin: 0; border-radius: var(--radius); overflow: hidden; box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.8), 0 0 0 1px #2A322D; }
 @media (max-width: 860px) { .spotlight-head { grid-template-columns: 1fr; } }
 
+/* Before and after: today's version underneath, the planted one on top, cut off at --at. */
+.growth { padding-top: 0; }
+.growth-head { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: clamp(24px, 5vw, 64px); align-items: end; margin-bottom: 40px; }
+.growth-head p { color: var(--muted); margin: 0; }
+.compare { margin: 0; padding: 12px; border-radius: 30px; background: var(--pulp), var(--tray); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), var(--shadow); }
+.compare-view { position: relative; border-radius: 20px; overflow: hidden; aspect-ratio: 1800 / 1125; touch-action: pan-y; }
+.compare-view img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.compare-before { clip-path: inset(0 calc(100% - var(--at)) 0 0); }
+.compare-handle { position: absolute; top: 0; bottom: 0; left: var(--at); width: 3px; margin-left: -1.5px; background: #fff; box-shadow: 0 0 0 1px rgba(24, 32, 27, 0.25), 0 0 18px rgba(0, 0, 0, 0.25); pointer-events: none; }
+.compare-handle::after { content: '‹ ›'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: #fff; color: var(--green-deep); font: 700 18px/1 var(--text); letter-spacing: 2px; box-shadow: 0 4px 14px rgba(24, 32, 27, 0.3); }
+.compare-tag { position: absolute; bottom: 14px; padding: 6px 12px; border-radius: 999px; background: rgba(24, 32, 27, 0.72); color: #fff; font: 600 13px/1.2 var(--text); pointer-events: none; }
+.compare-tag.before { left: 14px; }
+.compare-tag.after { right: 14px; }
+/* The slider covers the picture, so dragging anywhere (or the arrow keys) moves the cut. */
+.compare-range { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: ew-resize; }
+.compare-view:has(.compare-range:focus-visible) { outline: 2px solid var(--green-text); outline-offset: 3px; }
+@media (max-width: 860px) { .growth-head { grid-template-columns: 1fr; } }
+@media (max-width: 560px) { .compare-tag span { display: none; } .compare-tag { bottom: 10px; } .compare-tag.before { left: 10px; } .compare-tag.after { right: 10px; } }
+
 /* Meet the sprouts: pick an icon, see that sprout */
 .grown h2 { margin-bottom: 14px; }
 .section-lede { color: var(--muted); max-width: 36em; margin-bottom: 36px; }

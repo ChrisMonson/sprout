@@ -7,7 +7,16 @@
   <meta name="description" content="Describe a small tool in your own words. Sprout plants it, then keeps it growing from how you use it and what you tell it." />
   <meta property="og:title" content="Sprout: grow the tools you wish you had" />
   <meta property="og:description" content="Describe a small tool in your own words. Sprout plants it, then keeps it growing from how you use it and what you tell it." />
-  <meta property="og:image" content="images/home-light.jpg" />
+  <!-- Link previews need full addresses. -->
+  <link rel="canonical" href="https://chrismonson.github.io/sprout/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Sprout" />
+  <meta property="og:url" content="https://chrismonson.github.io/sprout/" />
+  <meta property="og:image" content="https://chrismonson.github.io/sprout/images/card.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Sprout: grow the tools you wish you had. Beside it, the greenhouse with seven sprouts in their tray." />
+  <meta name="twitter:card" content="summary_large_image" />
   <meta name="theme-color" content="#F7F8F6" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#121513" media="(prefers-color-scheme: dark)" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
@@ -114,6 +123,29 @@
             <picture><source srcset="images/history-dark.jpg" media="(prefers-color-scheme: dark)" /><img src="images/history-light.jpg" width="1800" height="1125" loading="lazy" alt="Launch Watch’s History drawer: what growing it has cost, and the launch reminders it has coming up, each of which can be cancelled, above the list of what grew, each with a Rewind button." /></picture>
           </div>
         </article>
+      </div>
+    </section>
+
+    <!-- Before and after -->
+    <section class="growth">
+      <div class="wrap">
+        <div class="growth-head">
+          <div>
+            <p class="eyebrow">Planted, then grown</p>
+            <h2>The same game, seventy changes apart.</h2>
+          </div>
+          <p>Hex Harbor Fishing was planted as a flat chart with a dinghy and a hand line. Five days of playing it and saying what it needed later, it’s an isometric sea with day and night, weather, a hull to keep afloat, talents and a captain’s log. Drag across to compare.</p>
+        </div>
+        <figure class="compare">
+          <div class="compare-view" style="--at: 50%">
+            <img class="compare-after" src="images/hex-after.jpg" width="1800" height="1125" loading="lazy" alt="Hex Harbor Fishing today: an isometric sea of hexes at night, islands with trees, rain over the west, Port Haven lit up, the day and time, a purse of 4,337 shillings with the hull at 93%, and buttons for Fishing, The hold, Market, Harbor, Talents and Captain’s log." />
+            <img class="compare-before" src="images/hex-before.jpg" width="1800" height="1125" loading="lazy" alt="Hex Harbor Fishing as planted: a flat parchment chart of hexes around Port Haven with a small boat, a purse of 20 shillings, and panels for what’s aboard (a dinghy with a hand line) and an empty hold." />
+            <span class="compare-tag before">Planted<span> · Oct 25</span></span>
+            <span class="compare-tag after">Today<span> · 70 changes later</span></span>
+            <span class="compare-handle" aria-hidden="true"></span>
+            <input class="compare-range" type="range" min="0" max="100" value="50" aria-label="How much of the first version to show" />
+          </div>
+        </figure>
       </div>
     </section>
 
@@ -324,6 +356,13 @@ npm run package    <span class="c"># release/Sprout.app</span></code></pre>
         });
       });
     })();
+  </script>
+  <script>
+    // Before and after: the slider sets where the planted version is cut off.
+    for (const view of document.querySelectorAll('.compare-view')) {
+      const range = view.querySelector('.compare-range');
+      range.addEventListener('input', () => view.style.setProperty('--at', `${range.value}%`));
+    }
   </script>
   <script src="vines.js" defer></script>
 </body>

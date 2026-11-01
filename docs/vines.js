@@ -279,7 +279,7 @@
       const float = still.matches ? 0 : (FLOAT - 1) * innerHeight / 2;
       const room = { top: free.top + float, bottom: free.bottom - float };
       const tall = room.bottom - room.top;
-      flowering = [null, { along: 0, tip: 0.2, left: 2, gap: 200, spots: [] }, { along: 0, tip: 0.3, left: 5 }, { along: 0.08, tip: 0.45, left: Infinity }][Math.max(0, index - sections.length + 4)];
+      flowering = [null, { along: 0, tip: 0.2, left: 2, gap: 200, spots: [] }, { along: 0, tip: 0.3, left: 5 }, { along: 0.08, tip: 0.45, left: 12 }][Math.max(0, index - sections.length + 4)];
       if (tall < 40) return;                                      // no room: no vine here
       const dir = fromLeft ? 1 : -1;
       fromLeft = !fromLeft;
