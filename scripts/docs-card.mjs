@@ -23,8 +23,8 @@ const html = `<!doctype html><html><head><meta charset="utf-8">
 </style></head><body>
   <div class="text">
     <div class="brand"><svg viewBox="0 0 24 24"><path d="M12 21v-9" /><path d="M12 12c0-4 3-7 8-7 0 4-3 7-8 7z" /><path d="M12 14c0-3-2.5-5.5-7-5.5 0 3 2.5 5.5 7 5.5z" /></svg>Sprout</div>
-    <h1>Grow the tools you wish you had.</h1>
-    <p>Describe a small tool in your own words. Sprout plants it, then keeps it growing.</p>
+    <h1>Grow your own tools.</h1>
+    <p>An experiment in hyper-customization. Describe what you want, and watch it grow around your needs.</p>
   </div>
   <div class="shot"><img src="${shot}"></div>
 </body></html>`;
