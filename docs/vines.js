@@ -100,8 +100,8 @@
     svg.setAttribute('height', height);
     svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
     // Everything scales with the margin: full size from about 110px, and no
-    // smaller than 60% on phones, where the vines still hang in the gaps between sections.
-    const k = Math.max(0.6, Math.min(1, margin / 110));
+    // smaller than 80% on phones, where the vines still hang in the gaps between sections.
+    const k = Math.max(0.8, Math.min(1, margin / 110));
     let g = el('g', {});
     svg.append(g);
     const rnd = random(7);
@@ -263,7 +263,9 @@
     // stays clear of the text above and below. The vines over the last three
     // sections come into flower: a bloom or two, then a few, then a few more.
     const top = 110, span = height - 150;
-    const depth = y => Math.max(0, Math.min(1, (y - top) / span));
+    // On phones the page is much taller, so the vines start a little more mature.
+    const young = width < 700 ? 0.3 : 0;
+    const depth = y => young + (1 - young) * Math.max(0, Math.min(1, (y - top) / span));
     const thickness = p => (1.2 + 3.2 * p.d ** 1.2) * k;
     const strandWidth = share => p => Math.max(0.7 * k, thickness(p) * share);
     const sections = [...document.querySelectorAll('main > section')].slice(1);
