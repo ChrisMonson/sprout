@@ -244,10 +244,29 @@ main > section.growth { padding-top: 0; }
 .ex-stats div { flex: 1; padding: 10px 14px; border-radius: 14px; background: var(--green-soft); }
 .ex-stats dt { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--green-text); }
 .ex-stats dd { margin: 2px 0 0; font: 700 22px var(--display); letter-spacing: -0.01em; }
+/* With JavaScript the count is a button that opens the full change log. */
+.ex-count { display: grid; grid-template-columns: 1fr auto; align-items: end; margin-top: 4px; padding: 10px 14px; border: 0; border-radius: 14px; background: var(--green-soft); color: var(--ink); text-align: left; cursor: pointer; transition: box-shadow 0.15s; }
+.ex-count:hover { box-shadow: inset 0 0 0 1.5px var(--green-text); }
+.ex-count-label { grid-column: 1; font: 600 12px var(--text); letter-spacing: 0.06em; text-transform: uppercase; color: var(--green-text); }
+.ex-count-n { grid-column: 1; margin-top: 2px; font: 700 22px var(--display); letter-spacing: -0.01em; }
+.ex-count-go { grid-column: 2; grid-row: 1 / 3; align-self: center; font: 600 13.5px var(--text); color: var(--green-text); }
 .ex-recent-title { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-top: 6px; }
 .ex-recent { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .ex-recent li { position: relative; padding-left: 18px; font-size: 14.5px; line-height: 1.45; }
 .ex-recent li::before { content: ''; position: absolute; left: 2px; top: 8px; width: 7px; height: 7px; border-radius: 50%; background: var(--green-text); }
+.ex-more { align-self: flex-start; margin-top: 4px; padding: 0; border: 0; background: none; color: var(--green-text); font: 600 14.5px var(--text); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+/* The full change log lies over the sprout's details, the height of the panel, and scrolls. */
+.ex-info { position: relative; }
+.ex-log { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 10px; padding: 24px 26px 0; background: var(--tray-cell); }
+.ex-log[hidden] { display: none; }
+.ex-log-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ex-log-head .ex-recent-title { margin: 0; }
+.ex-back { padding: 6px 12px; border: 0; border-radius: 999px; background: var(--green-soft); color: var(--green-text); font: 600 13.5px var(--text); cursor: pointer; }
+.ex-log-list { flex: 1; min-height: 0; overflow-y: auto; margin: 0 -26px; padding: 0 26px 22px; font-size: 14.5px; line-height: 1.45; }
+.ex-log-list ol { margin: 0; padding-left: 30px; display: flex; flex-direction: column; gap: 6px; }
+.ex-log-list li::marker { color: var(--muted); font-size: 12.5px; }
+.ex-log-list .planted { margin: 0 0 12px; padding-bottom: 10px; border-bottom: 1px solid var(--line); color: var(--muted); }
+.ex-log-list .planted span { display: block; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--green-text); }
 .ex-panel.swap .ex-shot, .ex-panel.swap .ex-info { animation: ex-in 0.35s cubic-bezier(.2, .7, .2, 1); }
 @keyframes ex-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .ex-panel.swap .ex-shot, .ex-panel.swap .ex-info { animation: none; } }
@@ -260,6 +279,8 @@ main > section.growth { padding-top: 0; }
   .ex-tabs { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 6px; padding-bottom: 4px; }
   .ex-tabs button { flex: 0 0 96px; scroll-snap-align: start; }
   .ex-info { padding: 22px; }
+  .ex-log { padding: 22px 22px 0; }
+  .ex-log-list { margin: 0 -22px; padding: 0 22px 20px; }
 }
 
 /* Feature cards */
