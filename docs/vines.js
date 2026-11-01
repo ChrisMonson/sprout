@@ -99,9 +99,9 @@
     svg.setAttribute('width', width);
     svg.setAttribute('height', height);
     svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
-    svg.classList.toggle('slim', margin < 70);
-    // Everything scales with the margin: full size from about 110px, fine on phones.
-    const k = Math.max(0.35, Math.min(1, margin / 110));
+    // Everything scales with the margin: full size from about 110px, and no
+    // smaller than 60% on phones, where the vines still hang in the gaps between sections.
+    const k = Math.max(0.6, Math.min(1, margin / 110));
     let g = el('g', {});
     svg.append(g);
     const rnd = random(7);
@@ -276,7 +276,8 @@
       const prev = section.previousElementSibling?.querySelector('.wrap');
       const lastPrev = prev ? [...prev.querySelectorAll('*')].reduce((m, n) => Math.max(m, pageBottom(n)), 0) : pageTop(section) - 60;
       const free = { top: lastPrev + 18 * k + 10, bottom: pageTop(firstText) - 16 * k - 8 };
-      const float = still.matches ? 0 : (FLOAT - 1) * innerHeight / 2;
+      // Half the float on phones, where the gaps between sections are smaller.
+      const float = still.matches ? 0 : (FLOAT - 1) * innerHeight / 2 * (width < 700 ? 0.5 : 1);
       const room = { top: free.top + float, bottom: free.bottom - float };
       const tall = room.bottom - room.top;
       flowering = [null, { along: 0, tip: 0.2, left: 2, gap: 200, spots: [] }, { along: 0, tip: 0.3, left: 5 }, { along: 0.08, tip: 0.45, left: 12 }][Math.max(0, index - sections.length + 4)];
@@ -288,7 +289,7 @@
       const root = { x: dir > 0 ? -12 : width + 12, y: room.top + tall * (0.15 + rnd() * 0.25) };
       const d0 = depth(root.y);
       const reach = innerHeight * 0.55;                           // scrolling this far draws the whole vine
-      const length = (width - margin * 0.4) * (0.5 + rnd() * 0.3);
+      const length = (width - margin * 0.4) * (width < 700 ? 0.7 + rnd() * 0.25 : 0.5 + rnd() * 0.3);   // most of the way across a phone
 
       // The drapes: sag between anchor points near the top of the room.
       const drapes = length > 560 ? 2 : 1;
@@ -344,7 +345,6 @@
       el.setAttribute('width', width);
       el.setAttribute('height', sprig.tall);
       el.setAttribute('viewBox', `0 ${sprig.top} ${width} ${sprig.tall}`);
-      el.classList.toggle('slim', margin < 70);
       el.style.setProperty('--float', `${sprig.float}px`);
       el.append(...sprig.g.children);
       holder.append(el);

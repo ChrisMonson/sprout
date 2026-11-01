@@ -109,7 +109,6 @@ main .wrap, .foot .wrap { position: relative; z-index: 2; }
 .vine-bloom circle.heart { fill: var(--vine-heart); }
 .vine-leaf.on, .vine-bloom.on { transform: scale(1); }
 /* When the margins are thin (phones), a finer, fainter edge vine. */
-.vines.slim { opacity: 0.45; }
 @media (prefers-reduced-motion: reduce) {
   .vine-stem, .vine-tendril, .vine-leaf, .vine-bloom { transition: none; }
 }
@@ -202,8 +201,8 @@ main .wrap, .foot .wrap { position: relative; z-index: 2; }
 /* Before and after: today's version underneath, the planted one on top, cut off at --at. */
 .growth { padding-top: 0; }
 /* A vine hangs above each section after the hero: give it room to breathe. */
-main > section:not(.hero) { padding-top: calc(clamp(72px, 10vw, 128px) + clamp(24px, 4vw, 56px)); }
-main > section.idea { padding-top: calc(clamp(48px, 7vw, 88px) + clamp(24px, 4vw, 56px)); }
+main > section:not(.hero) { padding-top: calc(clamp(72px, 10vw, 128px) + clamp(40px, 4vw, 56px)); }
+main > section.idea { padding-top: calc(clamp(48px, 7vw, 88px) + clamp(40px, 4vw, 56px)); }
 main > section.growth { padding-top: 0; }
 .growth-head { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: clamp(24px, 5vw, 64px); align-items: end; margin-bottom: 40px; }
 .growth-head p { color: var(--muted); margin: 0; }
