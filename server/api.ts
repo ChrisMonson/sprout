@@ -488,11 +488,11 @@ export function createApi(db: Db, host: Host) {
     const row = sproutOr404(c.req.param('id'));
     const { growthId } = await c.req.json<{ growthId: number }>();
     try {
-      await rewind(db, row.id, growthId);
+      const { title } = await rewind(db, row.id, growthId);
+      return c.json({ ok: true, title });
     } catch (err) {
       throw new HttpError(409, (err as Error).message);
     }
-    return c.json({ ok: true });
   });
 
   return app;

@@ -107,8 +107,8 @@ export default function SproutView({ id, full, summary, claude }: { id: string; 
   const undo = async (growthId: number) => {
     setToast(null);
     try {
-      await api.post(`/sprouts/${id}/rewind`, { growthId });
-      showToast({ text: 'Rewound.' });
+      const { title } = await api.post<{ title: string }>(`/sprouts/${id}/rewind`, { growthId });
+      showToast({ text: title.startsWith('Brought back') ? 'Brought it back.' : 'Rewound.' });
     } catch (err) {
       showToast({ text: (err as Error).message });
     }
@@ -393,7 +393,7 @@ function HistoryDrawer({ detail, onClose, onRewind, onCancelNotification }: {
               {g.detail && <span className="d">{g.detail}</span>}
               <span className="w">{day(g.ts)}, {timeOf(g.ts)}</span>
             </div>
-            {g.rewindable ? <button className="btn quiet small" style={{ alignSelf: 'flex-start' }} onClick={() => onRewind(g.id)}>Rewind</button> : null}
+            {g.rewindable ? <button className="btn quiet small" style={{ alignSelf: 'flex-start' }} onClick={() => onRewind(g.id)}>{g.kind === 'rewind' ? 'Undo' : 'Rewind'}</button> : null}
           </div>
         ))}
       </section>

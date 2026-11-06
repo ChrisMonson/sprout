@@ -162,7 +162,7 @@ A change has to pass the gate before it's saved (`server/gate.ts`):
 3. It builds.
 4. It loads in headless Chromium (a hidden window, in the Mac app) against a throwaway copy of your data with no console errors, page crashes, or `/api` 5xx responses.
 
-Saved changes go live at a quiet moment (10s without input), fast-forwarding `live/` so Vite hot-reloads them. If errors spike in the two minutes after a change, the watchdog reverts it and tells the agent. **Rewind** in History is your own undo.
+Saved changes go live at a quiet moment (10s without input), fast-forwarding `live/` so Vite hot-reloads them. If errors spike in the two minutes after a change, the watchdog reverts it and tells the agent. **Rewind** in History is your own undo: it takes out a change and everything after it, as one step with its own entry, and that entry's **Undo** brings back exactly what was taken out.
 
 Code rolls back but data doesn't, which is why migrations may only add.
 

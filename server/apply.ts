@@ -113,21 +113,34 @@ async function rollBack(db: Db, sproutId: string, watch: Watch, errors: number) 
   bus.send({ type: 'sprout', sproutId });
 }
 
-/** The person's undo: put the code back to how it was before this growth entry. */
-export async function rewind(db: Db, sproutId: string, growthId: number) {
+/**
+ * The person's undo: put the code back to how it was before this growth entry
+ * (and anything after it). A rewind is one commit with its own History entry,
+ * so rewinding that entry undoes the rewind: what was taken out comes back.
+ */
+export async function rewind(db: Db, sproutId: string, growthId: number): Promise<{ title: string }> {
   const p = sproutPaths(sproutId);
-  const entry = db.prepare('SELECT * FROM growth WHERE id = ? AND sprout_id = ?').get(growthId, sproutId) as { commit_sha: string; title: string; rewindable: number; ts: number } | undefined;
+  const entry = db.prepare('SELECT * FROM growth WHERE id = ? AND sprout_id = ?').get(growthId, sproutId) as { commit_sha: string; kind: string; title: string; rewindable: number; ts: number } | undefined;
   if (!entry?.rewindable) throw new Error('That change cannot be rewound.');
+  // Undoing a rewind flips its title: "Rewound "X"" becomes "Brought back "X"", and back again.
+  const undoing = entry.kind === 'rewind';
+  const change = undoing ? entry.title.replace(/^(Rewound|Brought back) /, '') : `"${entry.title}"`;
+  const bringingBack = undoing && entry.title.startsWith('Rewound ');
+  const title = `${bringingBack ? 'Brought back' : 'Rewound'} ${change}`;
   q.update(db, sproutId, { watch: null, pending_apply: null });
   try {
-    await git(p.live, 'revert', '--no-edit', `${entry.commit_sha}~1..HEAD`);
+    await git(p.live, 'revert', '--no-commit', `${entry.commit_sha}~1..HEAD`);
+    await git(p.live, 'commit', '-q', '-m', title);
   } catch (err) {
     await git(p.live, 'revert', '--abort').catch(() => {});
-    throw new Error(`Could not rewind: ${(err as Error).message.split('\n')[0]}`);
+    throw new Error(`Could not ${bringingBack ? 'undo the rewind' : 'rewind'}: ${(err as Error).message.split('\n')[0]}`);
   }
   db.prepare('UPDATE growth SET rewindable = 0 WHERE sprout_id = ? AND ts >= ?').run(sproutId, entry.ts);
-  db.prepare('INSERT INTO growth (sprout_id, ts, kind, title, detail, commit_sha) VALUES (?, ?, ?, ?, ?, ?)')
-    .run(sproutId, Date.now(), 'rewind', `Rewound "${entry.title}"`, 'Back to how it was before that change.', await head(p.live));
-  addNote(sproutId, `The person rewound "${entry.title}" (and anything after it). Don't bring it back unless they ask.`);
+  db.prepare('INSERT INTO growth (sprout_id, ts, kind, title, detail, commit_sha, rewindable) VALUES (?, ?, ?, ?, ?, ?, 1)')
+    .run(sproutId, Date.now(), 'rewind', title, bringingBack ? 'Back to how it was before the rewind.' : 'Back to how it was before that change.', await head(p.live));
+  addNote(sproutId, bringingBack
+    ? `The person undid their rewind, so ${change} is back. Treat it as wanted again.`
+    : `The person rewound ${change} (and anything after it). Don't bring it back unless they ask.`);
   bus.send({ type: 'sprout', sproutId });
+  return { title };
 }
