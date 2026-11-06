@@ -47,17 +47,23 @@ async function putBack(tool, name) {
 // that saves its own pictures returns nothing.
 const shots = {
   async home(s) {
-    // Song Scout isn't on the page, so it's left out of the tray (here, not in the greenhouse);
-    // an empty cell takes its place at the end so the rows stay even.
+    // The hero shows two rows of sprouts and the "Grow something new" row, so the
+    // rest are left out of the tray (here, not in the greenhouse), and empty cells
+    // fill out the last row.
     const p = await open(s, '/', 3500);
-    await p.evaluate(() => {
-      const card = [...document.querySelectorAll('a.sprout-card')].find(a => a.textContent.includes('Song Scout'));
-      if (!card) return;
-      const filler = document.createElement('span');
-      filler.className = 'cell-empty extra';
-      card.parentElement.append(filler);
-      card.remove();
-    });
+    await p.evaluate(leftOut => {
+      for (const card of document.querySelectorAll('a.sprout-card')) {
+        if (leftOut.some(name => card.textContent.includes(name))) card.remove();
+      }
+      const tray = document.querySelector('a.sprout-card').parentElement;
+      for (const cell of tray.querySelectorAll('.cell-empty.extra')) cell.remove();
+      const columns = getComputedStyle(tray).gridTemplateColumns.split(' ').length;
+      while (tray.children.length % columns) {
+        const filler = document.createElement('span');
+        filler.className = 'cell-empty extra';
+        tray.append(filler);
+      }
+    }, ['Song Scout', 'Llama Activation Lens', 'Skyrim Lore Journal', 'Overhead']);
     return p;
   },
   async lightlab(s) {

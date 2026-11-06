@@ -9,7 +9,7 @@ images = Path(__file__).resolve().parent.parent / 'docs' / 'images'
 raw = images / 'raw'
 
 # Desktop shots are 2880x1800; a few are cropped to their content.
-CROPS = {'home': (500, 40, 2380, 1790), 'grow': (640, 330, 2240, 1460)}
+CROPS = {'home': (500, 40, 2380, 1500), 'grow': (640, 330, 2240, 1460)}
 
 
 def around_the_light(im):
