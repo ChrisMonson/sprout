@@ -1,5 +1,5 @@
 // Screenshots for the project page (docs/), taken from a running greenhouse.
-//   node scripts/docs-screenshots.mjs [home game disaster whisper history settings usage grow greenhouse]
+//   node scripts/docs-screenshots.mjs [home lightlab scenes ailearn game disaster whisper history settings usage grow …]
 // Saves PNGs at 2x, light and dark, into docs/images/raw; scripts/docs-images.py
 // crops and compresses them into the JPEGs the page uses.
 // Icons: curl the greenhouse's /api/sprouts/<id>/icon.svg into docs/images/icons.
@@ -9,7 +9,7 @@ import { join } from 'node:path';
 import { mkdirSync } from 'node:fs';
 const out = join(import.meta.dirname, '..', 'docs', 'images');
 const base = process.env.SPROUT_URL ?? 'http://localhost:4100';
-const ids = { game: 'smvojao2sc39d', disaster: 'smvmt98rs0160', song: 'smvlzhmbu0c65', launch: 'smvpeuoly8e95', lighting: 'smvm0rlpp6211', skyrim: 'smvmp77il7103', overhead: 'smvlxxx76ec2d' };
+const ids = { lightlab: 'smw3s2llj2901', ailearn: 'smw14agpw9b05', game: 'smvojao2sc39d', disaster: 'smvmt98rs0160', launch: 'smvpeuoly8e95', lighting: 'smvm0rlpp6211', skyrim: 'smvmp77il7103', overhead: 'smvlxxx76ec2d' };
 // Overhead shows planes around its home: point it somewhere public (an airport) before shooting it.
 const which = process.argv.slice(2);
 const browser = await chromium.launch();
@@ -23,11 +23,82 @@ async function page(scheme = 'light', w = 1440, h = 900, from = browser) {
   await ctx.addInitScript(s => { try { localStorage.setItem('sprout-theme', s); } catch {} }, scheme);
   return ctx.newPage();
 }
-const settle = p => p.waitForTimeout(3500);
-const open = async (scheme, path, wait = 6000, from) => { const p = await page(scheme, 1440, 900, from); await p.goto(`${base}/#${path}`); await p.waitForTimeout(wait); return p; };
-// Every shot is taken twice, light and dark, as raw/<name>-<scheme>.png.
+// Shots leave out what Sprout happens to be doing at the time (its working notice and idea pills).
+const open = async (scheme, path, wait = 6000, from) => {
+  const p = await page(scheme, 1440, 900, from);
+  await p.goto(`${base}/#${path}`);
+  await p.addStyleTag({ content: '.card-float.working, .pills { display: none !important; }' });
+  await p.waitForTimeout(wait);
+  return p;
+};
+// Light Material Lab's saved bench setups: switch to one by name; returns the one that was showing.
+async function setup(tool, name) {
+  const was = await tool.locator('.setups-button .setups-name').textContent();
+  await tool.locator('.setups-button').click();
+  await tool.locator('.setups-item', { hasText: name }).click();
+  await tool.locator('.setups-button .setups-name', { hasText: name }).waitFor();
+  return was;
+}
+async function putBack(tool, name) {
+  await tool.locator('.setups-button').click();
+  await tool.locator('.setups-item', { hasText: name }).click();
+}
+// Every shot is taken twice, light and dark, as raw/<name>-<scheme>.png; a shot
+// that saves its own pictures returns nothing.
 const shots = {
-  async home(s) { return open(s, '/', 3500); },
+  async home(s) {
+    // Song Scout isn't on the page, so it's left out of the tray (here, not in the greenhouse);
+    // an empty cell takes its place at the end so the rows stay even.
+    const p = await open(s, '/', 3500);
+    await p.evaluate(() => {
+      const card = [...document.querySelectorAll('a.sprout-card')].find(a => a.textContent.includes('Song Scout'));
+      if (!card) return;
+      const filler = document.createElement('span');
+      filler.className = 'cell-empty extra';
+      card.parentElement.append(filler);
+      card.remove();
+    });
+    return p;
+  },
+  async lightlab(s) {
+    const p = await open(s, `/s/${ids.lightlab}`, 8000, await withGpu());
+    const tool = p.frameLocator('iframe');
+    const was = await setup(tool, 'Basic Scene');
+    await p.waitForTimeout(1500);
+    await p.screenshot({ path: join(out, 'raw', `lightlab-${s}.png`) });
+    await putBack(tool, was);
+    await p.close();
+  },
+  // Three of Light Material Lab's setups, the bench alone. Its bench is dark in either theme.
+  async scenes(s) {
+    if (s === 'dark') return;
+    const p = await open(s, `/s/${ids.lightlab}/full`, 8000, await withGpu());
+    const tool = p.frameLocator('iframe');
+    const frame = p.frames().find(f => f !== p.mainFrame());
+    let was;
+    for (const [name, file] of [['Black Hole', 'blackhole'], ['Fiber Optic', 'fiber'], ['Polarizers', 'polarizers']]) {
+      const before = await setup(tool, name);
+      was ??= before;
+      await p.waitForTimeout(2000);
+      // Just the light on the bench: the tool's own buttons laid over it are hidden for the shot.
+      const hide = await frame.addStyleTag({ content: '.stage-wrap > :not(canvas.stage) { visibility: hidden !important; }' });
+      await tool.locator('canvas.stage').screenshot({ path: join(out, 'raw', `scene-${file}.png`) });
+      await hide.evaluate(el => el.remove());
+    }
+    await putBack(tool, was);
+    await p.close();
+  },
+  async ailearn(s) {
+    // The Attention lesson's "who does 'it' mean?" playground; then back to the lesson list.
+    const p = await open(s, `/s/${ids.ailearn}`, 9000);
+    const tool = p.frameLocator('iframe');
+    await tool.getByRole('button', { name: 'Revisit' }).nth(5).click();
+    await tool.getByText('Playground · Who does', { exact: false }).evaluate(el => { el.parentElement.scrollIntoView({ block: 'start' }); scrollBy(0, -90); });
+    await p.waitForTimeout(800);
+    await p.screenshot({ path: join(out, 'raw', `ailearn-${s}.png`) });
+    await tool.getByRole('button', { name: /All lessons/ }).click();
+    await p.close();
+  },
   async game(s) { return open(s, `/s/${ids.game}`, 7000, await withGpu()); },
   async disaster(s) { return open(s, `/s/${ids.disaster}`, 9000); },
   async lighting(s) {
@@ -40,7 +111,6 @@ const shots = {
     return p;
   },
   async launch(s) { return open(s, `/s/${ids.launch}`, 7000); },
-  async song(s) { return open(s, `/s/${ids.song}`, 6000); },
   async skyrim(s) { return open(s, `/s/${ids.skyrim}/full`, 7000); },
   async whisper(s) {
     const p = await open(s, `/s/${ids.overhead}`, 9000);
@@ -72,6 +142,7 @@ mkdirSync(join(out, 'raw'), { recursive: true });
 for (const name of which.length ? which : Object.keys(shots)) {
   for (const scheme of ['light', 'dark']) {
     const p = await shots[name](scheme);
+    if (!p) continue;
     await p.screenshot({ path: join(out, 'raw', `${name}-${scheme}.png`) });
     await p.close();
   }

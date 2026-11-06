@@ -219,13 +219,21 @@ main > section.growth { padding-top: 0; }
 .compare-range { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: ew-resize; }
 .compare-view:has(.compare-range:focus-visible) { outline: 2px solid var(--green-text); outline-offset: 3px; }
 @media (max-width: 860px) { .growth-head { grid-template-columns: 1fr; } }
+
+/* Three Light Material Lab setups, side by side */
+.scene-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.scene-grid figure { margin: 0; }
+.scene-grid img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--radius); background: #121513; box-shadow: var(--shadow); }
+.scene-grid figcaption { margin-top: 12px; color: var(--muted); font-size: 15px; line-height: 1.45; }
+.scene-grid figcaption strong { display: block; color: var(--ink); font: 600 17px var(--text); }
+@media (max-width: 760px) { .scene-grid { grid-template-columns: 1fr; } }
 @media (max-width: 560px) { .compare-tag span { display: none; } .compare-tag { bottom: 10px; } .compare-tag.before { left: 10px; } .compare-tag.after { right: 10px; } }
 
 /* Meet the sprouts: pick an icon, see that sprout */
 .grown h2 { margin-bottom: 14px; }
 .section-lede { color: var(--muted); max-width: 36em; margin-bottom: 36px; }
 .explorer { border-radius: 28px; padding: 14px; background: var(--pulp), var(--tray); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), var(--shadow); }
-.ex-tabs { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
+.ex-tabs { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
 .ex-tabs button { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px 6px 12px; border: 0; border-radius: 16px; background: transparent; color: var(--tray-ink); font: 600 13px/1.25 var(--text); text-align: center; cursor: pointer; transition: background 0.15s, transform 0.15s; }
 .ex-tabs button img { width: 52px; height: 52px; border-radius: 13px; box-shadow: 0 6px 16px -8px rgba(24, 32, 27, 0.4); transition: transform 0.2s; }
 .ex-tabs button:hover { background: color-mix(in srgb, var(--tray-cell) 55%, transparent); }
